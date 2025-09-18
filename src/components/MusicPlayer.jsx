@@ -8,11 +8,15 @@ import {
   VolumeX,
   Heart,
   Shuffle,
-  Repeat
+  Repeat,
+  Music,
+  MessageSquare
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useMusicStore } from '../stores/music';
 
 const MusicPlayer = () => {
+  const navigate = useNavigate();
   const {
     currentSong,
     isPlaying,
@@ -173,6 +177,15 @@ const MusicPlayer = () => {
 
         {/* Volume Control */}
         <div className="flex items-center space-x-4 flex-1 justify-end">
+          {/* Lyrics Button */}
+          <button 
+            onClick={() => navigate('/lyrics')}
+            className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/10"
+            title="View Lyrics"
+          >
+            <MessageSquare className="w-5 h-5" />
+          </button>
+          
           <div className="flex items-center space-x-2">
             <button 
               onClick={toggleMute}

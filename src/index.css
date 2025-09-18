@@ -28,6 +28,60 @@
   animation-delay: 3s;
 }
 
+/* Custom slider styling */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  background: #4b5563;
+  border-radius: 2px;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.slider::-moz-range-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  background: #4b5563;
+  border-radius: 2px;
+  border: none;
+}
+
+.slider::-moz-range-thumb {
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
+
 /* Custom animations for blob effect */
 @keyframes blob {
   0% {

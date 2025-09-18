@@ -7,7 +7,7 @@ const Upload = () => {
       <h1 className="text-3xl font-bold text-white">Upload Music</h1>
 
       <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-8 text-center">
-        <UploadIcon className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+        <UploadIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
         <p className="text-gray-300">Music upload functionality will be implemented with Firebase Storage</p>
       </div>
     </div>

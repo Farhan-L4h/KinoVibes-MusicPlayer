@@ -11,7 +11,7 @@ const Profile = () => {
 
       <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-8">
         <div className="flex items-center space-x-6 mb-6">
-          <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+          <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center">
             {user?.photoURL ? (
               <img src={user.photoURL} alt="Profile" className="w-full h-full rounded-full object-cover" />
             ) : (

@@ -4,6 +4,7 @@ import { Howl } from 'howler';
 export const useMusicStore = create((set, get) => ({
   // Current song info
   currentSong: null,
+  currentTrack: null,
   isPlaying: false,
   volume: 1,
   currentTime: 0,
@@ -22,9 +23,10 @@ export const useMusicStore = create((set, get) => ({
   howl: null,
   
   // Actions
-  setCurrentSong: (song) => set({ currentSong: song }),
+  setCurrentSong: (song) => set({ currentSong: song, currentTrack: song }),
+  setCurrentTrack: (track) => set({ currentTrack: track, currentSong: track }),
   
-  playSong: (song, playlist = null) => {
+  playTrack: (track, playlist = null) => {
     const state = get();
     
     // Stop current song if playing
@@ -34,7 +36,7 @@ export const useMusicStore = create((set, get) => ({
     
     // Create new Howl instance
     const howl = new Howl({
-      src: [song.audioUrl],
+      src: [track.audioUrl],
       html5: true,
       volume: state.volume,
       onplay: () => set({ isPlaying: true }),
@@ -42,7 +44,7 @@ export const useMusicStore = create((set, get) => ({
       onstop: () => set({ isPlaying: false }),
       onend: () => {
         // Auto play next song
-        get().nextSong();
+        get().nextTrack();
       },
       onload: () => {
         set({ duration: howl.duration() });
@@ -51,13 +53,25 @@ export const useMusicStore = create((set, get) => ({
     
     // Update state
     set({
-      currentSong: song,
+      currentTrack: track,
+      currentSong: track,
       howl,
       playlist: playlist || state.playlist,
       currentIndex: playlist ? 0 : state.currentIndex
     });
     
     howl.play();
+  },
+  
+  playSong: (song, playlist = null) => {
+    get().playTrack(song, playlist);
+  },
+  
+  pauseTrack: () => {
+    const state = get();
+    if (state.howl && state.isPlaying) {
+      state.howl.pause();
+    }
   },
   
   togglePlay: () => {
@@ -71,24 +85,33 @@ export const useMusicStore = create((set, get) => ({
     }
   },
   
-  nextSong: () => {
+  nextTrack: () => {
     const state = get();
     if (state.playlist.length > 0) {
       const nextIndex = (state.currentIndex + 1) % state.playlist.length;
-      const nextSong = state.playlist[nextIndex];
-      get().playSong(nextSong);
+      const nextTrack = state.playlist[nextIndex];
+      get().playTrack(nextTrack);
       set({ currentIndex: nextIndex });
     }
   },
   
-  previousSong: () => {
+  nextSong: () => get().nextTrack(),
+  
+  previousTrack: () => {
     const state = get();
     if (state.playlist.length > 0) {
       const prevIndex = state.currentIndex === 0 ? state.playlist.length - 1 : state.currentIndex - 1;
-      const prevSong = state.playlist[prevIndex];
-      get().playSong(prevSong);
+      const prevTrack = state.playlist[prevIndex];
+      get().playTrack(prevTrack);
       set({ currentIndex: prevIndex });
     }
+  },
+  
+  previousSong: () => get().previousTrack(),
+  
+  addToQueue: (track) => {
+    const state = get();
+    set({ queue: [...state.queue, track] });
   },
   
   setVolume: (volume) => {
