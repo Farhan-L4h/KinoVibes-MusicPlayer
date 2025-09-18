@@ -12,6 +12,30 @@ import { auth, db } from '../config/firebase';
 // Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
 
+// Error message formatter
+const formatErrorMessage = (error) => {
+  switch (error.code) {
+    case 'auth/user-not-found':
+      return 'No account found with this email address.';
+    case 'auth/wrong-password':
+      return 'Incorrect password.';
+    case 'auth/email-already-in-use':
+      return 'An account already exists with this email address.';
+    case 'auth/weak-password':
+      return 'Password should be at least 6 characters.';
+    case 'auth/invalid-email':
+      return 'Invalid email address.';
+    case 'auth/api-key-not-valid-please-pass-a-valid-api-key':
+      return 'Firebase configuration error. Please check your API key.';
+    case 'auth/invalid-api-key':
+      return 'Firebase API key is invalid. Please check your configuration.';
+    case 'auth/configuration-not-found':
+      return 'Firebase configuration not found. Please check your setup.';
+    default:
+      return error.message || 'An error occurred. Please try again.';
+  }
+};
+
 // Sign up with email and password
 export const signUp = async (email, password, displayName) => {
   try {
@@ -31,7 +55,8 @@ export const signUp = async (email, password, displayName) => {
     
     return user;
   } catch (error) {
-    throw error;
+    const message = formatErrorMessage(error);
+    throw new Error(message);
   }
 };
 
@@ -41,7 +66,8 @@ export const signIn = async (email, password) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   } catch (error) {
-    throw error;
+    const message = formatErrorMessage(error);
+    throw new Error(message);
   }
 };
 
@@ -70,7 +96,8 @@ export const signInWithGoogle = async () => {
     
     return user;
   } catch (error) {
-    throw error;
+    const message = formatErrorMessage(error);
+    throw new Error(message);
   }
 };
 
@@ -79,7 +106,8 @@ export const logout = async () => {
   try {
     await signOut(auth);
   } catch (error) {
-    throw error;
+    const message = formatErrorMessage(error);
+    throw new Error(message);
   }
 };
 
