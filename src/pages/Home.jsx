@@ -121,7 +121,7 @@ const Home = () => {
   );
 
   return (
-    <div className="space-y-8 min-h-screen">
+    <div className="space-y-8">
       {/* Welcome Section */}
       <div className="flex justify-center">
         <div className="retro-card p-8 w-full max-w-4xl text-center">
@@ -136,7 +136,7 @@ const Home = () => {
 
       {/* Stats Cards */}
       <div className="flex justify-center">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 w-full max-w-6xl">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 w-full max-w-5xl">
           <div className="retro-card p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -189,7 +189,7 @@ const Home = () => {
 
       {/* Music Sections */}
       <div className="flex justify-center">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-6xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-5xl">
           {/* Your Music */}
           <div className="retro-card p-6">
             <div className="flex items-center justify-between mb-6">
@@ -239,7 +239,7 @@ const Home = () => {
       {/* Quick Actions */}
       {/* Quick Actions */}
       <div className="flex justify-center">
-        <div className="retro-card p-6 w-full max-w-6xl">
+        <div className="retro-card p-6 w-full max-w-5xl">
           <h2 className="text-xl font-bold text-white mb-6 flex items-center justify-center">
             <div className="w-2 h-2 bg-white rounded-full mr-3"></div>
             Quick Actions

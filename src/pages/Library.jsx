@@ -141,27 +141,26 @@ const Library = () => {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">My Music Library</h1>
-            <p className="text-gray-400">
-              {musicLibrary.length} {musicLibrary.length === 1 ? 'track' : 'tracks'} in your library
-            </p>
-          </div>
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="retro-button mt-4 sm:mt-0"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Upload Music
-          </button>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">My Music Library</h1>
+          <p className="text-gray-400">
+            {musicLibrary.length} {musicLibrary.length === 1 ? 'track' : 'tracks'} in your library
+          </p>
         </div>
+        <button
+          onClick={() => setShowUploadModal(true)}
+          className="retro-button mt-4 sm:mt-0"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Upload Music
+        </button>
+      </div>
 
-        {/* Search and Filter Bar */}
-        <div className="retro-card p-6">
+      {/* Search and Filter Bar */}
+      <div className="retro-card p-6">
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Search Input */}
             <div className="relative flex-1">
@@ -287,54 +286,53 @@ const Library = () => {
           </div>
         )}
 
-        {/* Upload Modal */}
-        {showUploadModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <MusicUpload
-              onUploadSuccess={handleUploadSuccess}
-              onClose={() => setShowUploadModal(false)}
-            />
-          </div>
-        )}
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <MusicUpload
+            onUploadSuccess={handleUploadSuccess}
+            onClose={() => setShowUploadModal(false)}
+          />
+        </div>
+      )}
 
-        {/* Delete Confirmation Modal */}
-        {deleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-            <div className="retro-card p-8 max-w-md w-full">
-              <div className="flex items-center mb-6">
-                <div className="w-12 h-12 bg-red-500 bg-opacity-20 rounded-full flex items-center justify-center mr-4">
-                  <AlertTriangle className="w-6 h-6 text-red-500" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Delete Track</h3>
-                  <p className="text-gray-400 text-sm">This action cannot be undone</p>
-                </div>
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="retro-card p-8 max-w-md w-full">
+            <div className="flex items-center mb-6">
+              <div className="w-12 h-12 bg-red-500 bg-opacity-20 rounded-full flex items-center justify-center mr-4">
+                <AlertTriangle className="w-6 h-6 text-red-500" />
               </div>
-              
-              <div className="retro-card mb-6 p-4 bg-black bg-opacity-30">
-                <p className="text-white font-medium">{deleteConfirm.title}</p>
-                <p className="text-gray-400 text-sm">{deleteConfirm.artist}</p>
-              </div>
-              
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setDeleteConfirm(null)}
-                  className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteConfirm)}
-                  className="flex-1 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center justify-center"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </button>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Delete Track</h3>
+                <p className="text-gray-400 text-sm">This action cannot be undone</p>
               </div>
             </div>
+            
+            <div className="retro-card mb-6 p-4 bg-black bg-opacity-30">
+              <p className="text-white font-medium">{deleteConfirm.title}</p>
+              <p className="text-gray-400 text-sm">{deleteConfirm.artist}</p>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirm)}
+                className="flex-1 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center justify-center"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

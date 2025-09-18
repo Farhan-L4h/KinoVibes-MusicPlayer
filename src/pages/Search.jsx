@@ -163,7 +163,7 @@ const Search = () => {
   );
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
+    <div className="space-y-8">
       {/* Search Header */}
       <div className="text-center pb-6">
         <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
