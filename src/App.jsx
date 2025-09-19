@@ -35,7 +35,7 @@ function App() {
 
   return (
     <Router>
-      <div className="bg-black">
+      <div className="w-full h-screen bg-black overflow-hidden">
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
@@ -51,9 +51,6 @@ function App() {
           <Route path="/upload" element={<PrivateRoute><Layout><Upload /></Layout></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Layout><Profile /></Layout></PrivateRoute>} />
         </Routes>
-        
-        {/* Music Player - hanya tampil jika user sudah login */}
-        {isAuthenticated && <MusicPlayer />}
       </div>
     </Router>
   );

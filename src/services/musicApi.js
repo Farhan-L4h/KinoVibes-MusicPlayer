@@ -28,23 +28,29 @@ export const uploadMusic = async (audioFile, albumArtFile, metadata, userId) => 
   try {
     if (!audioFile) throw new Error('Audio file is required');
     
+    console.log('🎵 Starting music upload process...');
     const timestamp = Date.now();
     const audioFileName = `${timestamp}_${audioFile.name}`;
     const albumArtFileName = albumArtFile ? `${timestamp}_${albumArtFile.name}` : null;
     
+    console.log('📤 Uploading audio file...');
     // Upload audio file
     const audioRef = ref(storage, `music/${userId}/${audioFileName}`);
     await uploadBytes(audioRef, audioFile);
+    console.log('✅ Audio file uploaded, getting URL...');
     const audioUrl = await getDownloadURL(audioRef);
     
     // Upload album art if provided
     let albumArtUrl = null;
     if (albumArtFile) {
+      console.log('🖼️ Uploading album art...');
       const albumArtRef = ref(storage, `album-art/${userId}/${albumArtFileName}`);
       await uploadBytes(albumArtRef, albumArtFile);
+      console.log('✅ Album art uploaded, getting URL...');
       albumArtUrl = await getDownloadURL(albumArtRef);
     }
     
+    console.log('💾 Saving metadata to Firestore...');
     // Save metadata to Firestore
     const musicData = {
       id: `local_${timestamp}`,
@@ -68,7 +74,21 @@ export const uploadMusic = async (audioFile, albumArtFile, metadata, userId) => 
     
     return { ...musicData, firestoreId: docRef.id };
   } catch (error) {
-    console.error('Error uploading music:', error);
+    console.error('❌ Error uploading music:', error);
+    
+    // Provide more specific error messages
+    if (error.code === 'storage/unauthorized') {
+      throw new Error('You do not have permission to upload files. Please check your authentication.');
+    } else if (error.code === 'storage/canceled') {
+      throw new Error('Upload was canceled. Please try again.');
+    } else if (error.code === 'storage/unknown') {
+      throw new Error('An unknown error occurred. Please check your internet connection and try again.');
+    } else if (error.code === 'storage/retry-limit-exceeded') {
+      throw new Error('Upload failed after multiple attempts. Please try again later.');
+    } else if (error.message?.includes('Firebase')) {
+      throw new Error('Firebase service temporarily unavailable. Please try again.');
+    }
+    
     throw error;
   }
 };

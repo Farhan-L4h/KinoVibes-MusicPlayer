@@ -3,8 +3,8 @@ import { Upload as UploadIcon } from 'lucide-react';
 
 const Upload = () => {
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-white">Upload Music</h1>
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <h1 className="text-3xl font-bold text-white text-center">Upload Music</h1>
 
       <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-8 text-center">
         <UploadIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />

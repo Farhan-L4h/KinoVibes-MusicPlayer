@@ -121,11 +121,11 @@ const Home = () => {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 w-full">
       {/* Welcome Section */}
-      <div className="flex justify-center">
-        <div className="retro-card p-8 w-full max-w-4xl text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+      <div className="w-full">
+        <div className="retro-card p-8 max-w-4xl mx-auto text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Welcome back, <span className="text-gray-300">{user?.displayName || user?.email?.split('@')[0]}</span>! 👋
           </h1>
           <p className="text-gray-400 text-lg">
@@ -135,8 +135,8 @@ const Home = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="flex justify-center">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 w-full max-w-5xl">
+      <div className="w-full">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
           <div className="retro-card p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -188,8 +188,8 @@ const Home = () => {
       </div>
 
       {/* Music Sections */}
-      <div className="flex justify-center">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-5xl">
+      <div className="w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
           {/* Your Music */}
           <div className="retro-card p-6">
             <div className="flex items-center justify-between mb-6">
@@ -237,9 +237,8 @@ const Home = () => {
       </div>
 
       {/* Quick Actions */}
-      {/* Quick Actions */}
-      <div className="flex justify-center">
-        <div className="retro-card p-6 w-full max-w-5xl">
+      <div className="w-full">
+        <div className="retro-card p-6 max-w-5xl mx-auto">
           <h2 className="text-xl font-bold text-white mb-6 flex items-center justify-center">
             <div className="w-2 h-2 bg-white rounded-full mr-3"></div>
             Quick Actions

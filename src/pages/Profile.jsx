@@ -6,8 +6,8 @@ const Profile = () => {
   const { user } = useAuthStore();
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-white">Profile</h1>
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <h1 className="text-3xl font-bold text-white text-center">Profile</h1>
 
       <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-8">
         <div className="flex items-center space-x-6 mb-6">

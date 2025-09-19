@@ -115,17 +115,18 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
     setUploadProgress(0);
 
     try {
-      // Simulate upload progress
+      // Progressive progress simulation
+      const progressSteps = [10, 25, 40, 60, 80, 95];
+      let currentStep = 0;
+      
       const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + 10;
-        });
-      }, 200);
+        if (currentStep < progressSteps.length) {
+          setUploadProgress(progressSteps[currentStep]);
+          currentStep++;
+        }
+      }, 300);
 
+      console.log('🎵 Starting upload...');
       const result = await uploadMusic(
         audioFile,
         albumArtFile,
@@ -141,6 +142,7 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
 
       clearInterval(progressInterval);
       setUploadProgress(100);
+      console.log('✅ Upload completed successfully:', result);
       setSuccess(true);
       
       // Call success callback
@@ -165,8 +167,8 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
       }, 2000);
       
     } catch (err) {
-      console.error('Upload error:', err);
-      setError(err.message || 'Failed to upload music');
+      console.error('❌ Upload error:', err);
+      setError(err.message || 'Failed to upload music. Please try again.');
       setUploadProgress(0);
     } finally {
       setUploading(false);
@@ -195,7 +197,7 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
   }
 
   return (
-    <div className="retro-card w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="retro-card w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
       <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-600">
         <h2 className="text-2xl font-bold text-white">Upload Music</h2>
         {onClose && (

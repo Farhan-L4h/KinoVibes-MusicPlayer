@@ -4,15 +4,17 @@ import MusicPlayer from './MusicPlayer';
 
 const Layout = ({ children }) => {
   return (
-    <div className="flex h-screen bg-black">
+    <div className="h-screen bg-black flex">
       {/* Sidebar */}
-      <Sidebar />
+      <div className="w-64 flex-shrink-0">
+        <Sidebar />
+      </div>
       
-      {/* Main Content */}
+      {/* Main Content Area - Centered Horizontally */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-8 flex justify-center items-start">
-          <div className="w-full max-w-6xl">
+        <main className="flex-1 overflow-y-auto py-8 px-4">
+          <div className="w-full max-w-6xl mx-auto px-4">
             {children}
           </div>
         </main>
