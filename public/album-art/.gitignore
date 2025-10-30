@@ -1,0 +1,6 @@
+# Ignore uploaded album art
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.gif

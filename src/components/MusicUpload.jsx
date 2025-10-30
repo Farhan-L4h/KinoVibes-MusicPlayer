@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/auth';
 import { uploadMusic, isValidAudioFile, isValidImageFile } from '../services/musicApi';
-import { Upload, Music, Image, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { getUserAlbums, getOrCreateAlbum, incrementTrackCount } from '../services/albumApi';
+import { Upload, Music, Image, X, CheckCircle, AlertCircle, Plus } from 'lucide-react';
 
 const MusicUpload = ({ onUploadSuccess, onClose }) => {
   const { user } = useAuthStore();
@@ -19,6 +20,31 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  
+  // Album management
+  const [albums, setAlbums] = useState([]);
+  const [showNewAlbum, setShowNewAlbum] = useState(false);
+  const [selectedAlbum, setSelectedAlbum] = useState('');
+  const [loadingAlbums, setLoadingAlbums] = useState(true);
+  
+  // Load user's albums
+  useEffect(() => {
+    if (user?.uid) {
+      loadAlbums();
+    }
+  }, [user]);
+  
+  const loadAlbums = async () => {
+    try {
+      setLoadingAlbums(true);
+      const userAlbums = await getUserAlbums(user.uid);
+      setAlbums(userAlbums);
+    } catch (error) {
+      console.error('Error loading albums:', error);
+    } finally {
+      setLoadingAlbums(false);
+    }
+  };
 
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -85,6 +111,30 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
     }
   };
 
+  // Handle album selection
+  const handleAlbumChange = (e) => {
+    const value = e.target.value;
+    setSelectedAlbum(value);
+    
+    if (value === 'new') {
+      setShowNewAlbum(true);
+      setFormData(prev => ({ ...prev, album: '' }));
+    } else if (value === '') {
+      setShowNewAlbum(false);
+      setFormData(prev => ({ ...prev, album: '' }));
+    } else {
+      setShowNewAlbum(false);
+      const album = albums.find(a => a.id === value);
+      if (album) {
+        setFormData(prev => ({ 
+          ...prev, 
+          album: album.name,
+          artist: album.artist || prev.artist
+        }));
+      }
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -109,6 +159,11 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
       setError('Please enter an artist name');
       return;
     }
+    
+    if (!formData.album.trim()) {
+      setError('Please select or enter an album name');
+      return;
+    }
 
     setUploading(true);
     setError('');
@@ -127,18 +182,31 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
       }, 300);
 
       console.log('🎵 Starting upload...');
+      
+      // Get or create album first
+      const albumData = await getOrCreateAlbum(
+        formData.album.trim(),
+        formData.artist.trim(),
+        user.uid,
+        albumArtFile ? URL.createObjectURL(albumArtFile) : null
+      );
+      
       const result = await uploadMusic(
         audioFile,
         albumArtFile,
         {
           title: formData.title.trim(),
           artist: formData.artist.trim(),
-          album: formData.album.trim() || 'Unknown Album',
+          album: formData.album.trim(),
+          albumId: albumData.id,
           genre: formData.genre.trim() || 'Unknown',
           duration: formData.duration
         },
         user.uid
       );
+      
+      // Increment track count for album
+      await incrementTrackCount(formData.album.trim());
 
       clearInterval(progressInterval);
       setUploadProgress(100);
@@ -323,10 +391,39 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div>
+            <label htmlFor="album-select" className="block text-sm font-medium text-white mb-1">
+              Album *
+            </label>
+            {loadingAlbums ? (
+              <div className="w-full px-3 py-2 bg-black bg-opacity-30 text-gray-400 border border-gray-600 rounded-lg">
+                Loading albums...
+              </div>
+            ) : (
+              <select
+                id="album-select"
+                value={selectedAlbum}
+                onChange={handleAlbumChange}
+                className="w-full px-3 py-2 bg-black bg-opacity-30 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+                required={!showNewAlbum}
+              >
+                <option value="" className="bg-gray-800">Select album...</option>
+                {albums.map((album) => (
+                  <option key={album.id} value={album.id} className="bg-gray-800">
+                    {album.name} - {album.artist}
+                  </option>
+                ))}
+                <option value="new" className="bg-gray-800 font-semibold">
+                  <Plus className="w-4 h-4 inline" /> Create New Album
+                </option>
+              </select>
+            )}
+          </div>
+          
+          {(showNewAlbum || selectedAlbum === 'new') && (
+            <div className="bg-white bg-opacity-5 p-4 rounded-lg border border-gray-600">
               <label htmlFor="album" className="block text-sm font-medium text-white mb-1">
-                Album
+                New Album Name *
               </label>
               <input
                 type="text"
@@ -335,9 +432,16 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
                 value={formData.album}
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 bg-black bg-opacity-30 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-white placeholder-gray-400"
-                placeholder="Album name"
+                placeholder="Enter new album name"
+                required
               />
+              <p className="text-xs text-gray-400 mt-1">
+                Album akan dibuat otomatis dengan artist dan cover dari lagu ini
+              </p>
             </div>
+          )}
+          
+          <div className="grid grid-cols-2 gap-3">
             
             <div>
               <label htmlFor="genre" className="block text-sm font-medium text-white mb-1">

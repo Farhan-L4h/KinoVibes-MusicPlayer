@@ -1,5 +1,5 @@
-// Local Music Library Service - Firebase Storage Integration
-// Manages local music files stored in Firebase Storage and Firestore
+// Local Music Library Service - Local Storage + Firestore
+// Manages local music files stored in project folder with metadata in Firestore
 
 import { 
   collection, 
@@ -8,59 +8,77 @@ import {
   deleteDoc, 
   doc, 
   query, 
-  where, 
   orderBy,
   updateDoc
 } from 'firebase/firestore';
-import { 
-  ref, 
-  uploadBytes, 
-  getDownloadURL, 
-  deleteObject 
-} from 'firebase/storage';
-import { db, storage } from '../config/firebase';
+import { db } from '../config/firebase';
 
 // Collection reference for music metadata
 const MUSIC_COLLECTION = 'music_library';
 
-// Upload music file to Firebase Storage and save metadata to Firestore
+// Local storage paths
+const MUSIC_BASE_PATH = '/music/uploads/';
+const ALBUM_ART_BASE_PATH = '/album-art/';
+const DEMO_MUSIC_PATH = '/music/demo/';
+
+// Backend API URL
+const API_BASE_URL = 'http://localhost:3001';
+
+// Save music file to local project folder and metadata to Firestore
 export const uploadMusic = async (audioFile, albumArtFile, metadata, userId) => {
   try {
     if (!audioFile) throw new Error('Audio file is required');
     
     console.log('🎵 Starting music upload process...');
     const timestamp = Date.now();
-    const audioFileName = `${timestamp}_${audioFile.name}`;
-    const albumArtFileName = albumArtFile ? `${timestamp}_${albumArtFile.name}` : null;
+    const sanitizedFileName = audioFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const audioFileName = `${userId}_${timestamp}_${sanitizedFileName}`;
+    const albumArtFileName = albumArtFile 
+      ? `${userId}_${timestamp}_${albumArtFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}` 
+      : null;
     
-    console.log('📤 Uploading audio file...');
-    // Upload audio file
-    const audioRef = ref(storage, `music/${userId}/${audioFileName}`);
-    await uploadBytes(audioRef, audioFile);
-    console.log('✅ Audio file uploaded, getting URL...');
-    const audioUrl = await getDownloadURL(audioRef);
+    // Construct local file paths (relative to public folder)
+    const audioPath = `${MUSIC_BASE_PATH}${audioFileName}`;
+    const albumArtPath = albumArtFile ? `${ALBUM_ART_BASE_PATH}${albumArtFileName}` : null;
     
-    // Upload album art if provided
-    let albumArtUrl = null;
+    console.log('📤 Uploading files to backend API...');
+    
+    // Upload files to backend API
+    const formData = new FormData();
+    formData.append('audio', audioFile);
+    formData.append('audioFileName', audioFileName);
+    
     if (albumArtFile) {
-      console.log('🖼️ Uploading album art...');
-      const albumArtRef = ref(storage, `album-art/${userId}/${albumArtFileName}`);
-      await uploadBytes(albumArtRef, albumArtFile);
-      console.log('✅ Album art uploaded, getting URL...');
-      albumArtUrl = await getDownloadURL(albumArtRef);
+      formData.append('albumArt', albumArtFile);
+      formData.append('albumArtFileName', albumArtFileName);
     }
     
+    // Upload to backend
+    const uploadResponse = await fetch(`${API_BASE_URL}/api/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!uploadResponse.ok) {
+      const error = await uploadResponse.json();
+      throw new Error(error.message || 'File upload failed');
+    }
+    
+    const uploadResult = await uploadResponse.json();
+    console.log('✅ Files uploaded successfully:', uploadResult);
+    
     console.log('💾 Saving metadata to Firestore...');
-    // Save metadata to Firestore
+    // Save metadata to Firestore (file paths instead of Firebase URLs)
     const musicData = {
       id: `local_${timestamp}`,
       title: metadata.title || 'Untitled',
       artist: metadata.artist || 'Unknown Artist',
       album: metadata.album || 'Unknown Album',
+      albumId: metadata.albumId || null,
       genre: metadata.genre || 'Unknown',
       duration: metadata.duration || 0,
-      audioUrl,
-      albumArt: albumArtUrl,
+      audioUrl: audioPath, // Local path instead of Firebase URL
+      albumArt: albumArtPath,
       uploadedBy: userId,
       uploadedAt: new Date(),
       fileName: audioFileName,
@@ -70,28 +88,25 @@ export const uploadMusic = async (audioFile, albumArtFile, metadata, userId) => 
     };
     
     const docRef = await addDoc(collection(db, MUSIC_COLLECTION), musicData);
-    console.log('🎵 Music uploaded successfully:', docRef.id);
+    console.log('🎵 Music metadata saved successfully:', docRef.id);
     
     return { ...musicData, firestoreId: docRef.id };
   } catch (error) {
     console.error('❌ Error uploading music:', error);
     
-    // Provide more specific error messages
-    if (error.code === 'storage/unauthorized') {
-      throw new Error('You do not have permission to upload files. Please check your authentication.');
-    } else if (error.code === 'storage/canceled') {
-      throw new Error('Upload was canceled. Please try again.');
-    } else if (error.code === 'storage/unknown') {
-      throw new Error('An unknown error occurred. Please check your internet connection and try again.');
-    } else if (error.code === 'storage/retry-limit-exceeded') {
-      throw new Error('Upload failed after multiple attempts. Please try again later.');
-    } else if (error.message?.includes('Firebase')) {
-      throw new Error('Firebase service temporarily unavailable. Please try again.');
+    if (error.message?.includes('Firebase') || error.message?.includes('Firestore')) {
+      throw new Error('Database service temporarily unavailable. Please try again.');
+    }
+    
+    if (error.message?.includes('fetch') || error.message?.includes('upload')) {
+      throw new Error('Backend API not available. Please make sure the server is running on port 3001.');
     }
     
     throw error;
   }
 };
+
+
 
 // Get all music from local library
 export const getAllMusic = async () => {
@@ -181,25 +196,37 @@ export const getArtistTopTracks = async (artistName) => {
   }
 };
 
-// Delete music from Firebase Storage and Firestore
-export const deleteMusic = async (firestoreId, audioUrl, albumArtUrl, userId) => {
+// Delete music metadata from Firestore and files from server
+export const deleteMusic = async (firestoreId, audioUrl, albumArtUrl) => {
   try {
-    // Delete from Firestore
+    // Delete files from backend
+    if (audioUrl || albumArtUrl) {
+      try {
+        const deleteResponse = await fetch(`${API_BASE_URL}/api/files`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            audioPath: audioUrl,
+            albumArtPath: albumArtUrl
+          })
+        });
+        
+        if (deleteResponse.ok) {
+          console.log('✅ Files deleted from server');
+        } else {
+          console.warn('⚠️ Failed to delete files from server');
+        }
+      } catch (error) {
+        console.warn('⚠️ Backend API not available, files not deleted:', error.message);
+      }
+    }
+    
+    // Delete metadata from Firestore
     await deleteDoc(doc(db, MUSIC_COLLECTION, firestoreId));
+    console.log('🗑️ Music metadata deleted successfully');
     
-    // Delete audio file from Storage
-    if (audioUrl) {
-      const audioRef = ref(storage, audioUrl);
-      await deleteObject(audioRef);
-    }
-    
-    // Delete album art from Storage if exists
-    if (albumArtUrl) {
-      const albumArtRef = ref(storage, albumArtUrl);
-      await deleteObject(albumArtRef);
-    }
-    
-    console.log('🗑️ Music deleted successfully');
     return true;
   } catch (error) {
     console.error('Error deleting music:', error);
@@ -224,7 +251,7 @@ export const updateMusic = async (firestoreId, updates) => {
   }
 };
 
-// Demo music data - fallback when no local music is available
+// Demo music data - uses local or external demo files
 export const getDemoMusic = () => {
   return [
     {
@@ -234,7 +261,7 @@ export const getDemoMusic = () => {
       album: "Demo Album",
       duration: 180,
       albumArt: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop",
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+      audioUrl: "/music/demo/chill-vibes.mp3", // Local demo file (or fallback to external)
       genre: "Electronic",
       isFullTrack: true,
       source: 'demo'
@@ -246,7 +273,7 @@ export const getDemoMusic = () => {
       album: "Demo Collection",
       duration: 220,
       albumArt: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop",
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+      audioUrl: "/music/demo/summer-nights.mp3",
       genre: "Pop",
       isFullTrack: true,
       source: 'demo'
@@ -258,7 +285,7 @@ export const getDemoMusic = () => {
       album: "Night Sessions", 
       duration: 195,
       albumArt: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop",
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+      audioUrl: "/music/demo/midnight-drive.mp3",
       genre: "Synthwave",
       isFullTrack: true,
       source: 'demo'
@@ -270,7 +297,7 @@ export const getDemoMusic = () => {
       album: "Natural Sounds",
       duration: 240,
       albumArt: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop", 
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+      audioUrl: "/music/demo/ocean-waves.mp3",
       genre: "Ambient",
       isFullTrack: true,
       source: 'demo'
@@ -282,7 +309,7 @@ export const getDemoMusic = () => {
       album: "Urban Collection",
       duration: 210,
       albumArt: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop",
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+      audioUrl: "/music/demo/city-lights.mp3",
       genre: "Hip Hop",
       isFullTrack: true,
       source: 'demo'
@@ -294,7 +321,7 @@ export const getDemoMusic = () => {
       album: "Unplugged Sessions",
       duration: 267,
       albumArt: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop",
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", // External fallback
       genre: "Acoustic",
       isFullTrack: true,
       source: 'demo'
@@ -306,7 +333,7 @@ export const getDemoMusic = () => {
       album: "Digital Waves",
       duration: 198,
       albumArt: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop",
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3", 
+      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", 
       genre: "Electronic",
       isFullTrack: true,
       source: 'demo'
@@ -318,7 +345,7 @@ export const getDemoMusic = () => {
       album: "Smooth Collection",
       duration: 234,
       albumArt: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop",
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
       genre: "Jazz",
       isFullTrack: true,
       source: 'demo'
@@ -347,5 +374,23 @@ export const isValidImageFile = (file) => {
 
 // Check if local music library is configured
 export const isLocalLibraryConfigured = () => {
-  return true; // Always true since we use Firebase
+  return true; // Always true since we use local storage + Firestore
+};
+
+// Get list of pending files (files that need to be saved manually)
+export const getPendingFiles = () => {
+  const audioFiles = JSON.parse(localStorage.getItem('pending_audio_files') || '[]');
+  const albumArtFiles = JSON.parse(localStorage.getItem('pending_album_art_files') || '[]');
+  return {
+    audioFiles,
+    albumArtFiles,
+    total: audioFiles.length + albumArtFiles.length
+  };
+};
+
+// Clear pending files after they've been saved
+export const clearPendingFiles = () => {
+  localStorage.removeItem('pending_audio_files');
+  localStorage.removeItem('pending_album_art_files');
+  console.log('✅ Pending files cleared');
 };

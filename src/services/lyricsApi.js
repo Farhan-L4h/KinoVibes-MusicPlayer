@@ -1,8 +1,9 @@
 // Lyrics API service
-// Uses various free lyrics APIs for demonstration
+// Manages lyrics stored locally in project with fallback to APIs
 
 const GENIUS_ACCESS_TOKEN = 'your_genius_access_token'; // To be configured
 const MUSIXMATCH_API_KEY = 'your_musixmatch_api_key'; // To be configured
+const LYRICS_BASE_PATH = '/lyrics/';
 
 // Demo lyrics data for testing
 const demoLyrics = {
@@ -166,9 +167,25 @@ export const fetchLyricsFromGenius = async (artist, title) => {
   }
 };
 
-// Fetch synchronized lyrics (demo implementation)
-export const fetchSynchronizedLyrics = async (songId, artist, title) => {
+// Fetch synchronized lyrics from local files or demo
+export const fetchSynchronizedLyrics = async (songId) => {
   try {
+    // Try to load lyrics from local file first
+    const localLyricsPath = `${LYRICS_BASE_PATH}${songId}.json`;
+    try {
+      const response = await fetch(localLyricsPath);
+      if (response.ok) {
+        const lyricsData = await response.json();
+        return {
+          lyrics: lyricsData.lyrics,
+          synchronized: true,
+          source: 'local'
+        };
+      }
+    } catch {
+      console.log('No local lyrics file found, checking demo data...');
+    }
+    
     // Check if we have demo lyrics
     if (demoLyrics[songId]) {
       return {
@@ -200,6 +217,38 @@ export const fetchSynchronizedLyrics = async (songId, artist, title) => {
   }
 };
 
+// Save synchronized lyrics to local file
+export const saveLyricsLocally = async (songId, artist, title, lyrics) => {
+  const lyricsData = {
+    songId,
+    artist,
+    title,
+    lyrics,
+    createdAt: new Date().toISOString()
+  };
+  
+  const fileName = `${songId}.json`;
+  const jsonString = JSON.stringify(lyricsData, null, 2);
+  
+  // Store in localStorage as reference
+  const pendingLyrics = JSON.parse(localStorage.getItem('pending_lyrics_files') || '[]');
+  pendingLyrics.push({
+    fileName,
+    songId,
+    artist,
+    title,
+    data: lyricsData,
+    timestamp: Date.now()
+  });
+  localStorage.setItem('pending_lyrics_files', JSON.stringify(pendingLyrics));
+  
+  console.log(`✅ Lyrics queued for ${title} by ${artist}`);
+  console.log(`⚠️  Save to: public/lyrics/${fileName}`);
+  console.log('Content:', jsonString);
+  
+  return fileName;
+};
+
 // Get current lyric line based on playback time
 export const getCurrentLyricLine = (lyrics, currentTime) => {
   if (!lyrics || lyrics.length === 0) return null;
@@ -227,7 +276,7 @@ export const getCurrentLyricLine = (lyrics, currentTime) => {
 };
 
 // Search for lyrics with multiple providers
-export const searchLyrics = async (artist, title, songId) => {
+export const searchLyrics = async (artist, title, songId = null) => {
   const providers = [
     () => fetchSynchronizedLyrics(songId, artist, title),
     () => fetchLyricsFromGenius(artist, title)
@@ -239,7 +288,7 @@ export const searchLyrics = async (artist, title, songId) => {
       if (result.lyrics && result.lyrics.length > 0) {
         return result;
       }
-    } catch (error) {
+    } catch {
       continue; // Try next provider
     }
   }

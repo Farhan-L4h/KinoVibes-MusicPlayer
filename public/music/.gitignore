@@ -1,0 +1,10 @@
+# Ignore user uploaded files (keep only metadata in git)
+*.mp3
+*.wav
+*.ogg
+*.m4a
+*.aac
+*.flac
+
+# Keep demo files
+!demo/
