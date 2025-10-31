@@ -14,6 +14,7 @@ import Register from './pages/Register';
 import Search from './pages/Search';
 import Library from './pages/Library';
 import Playlists from './pages/Playlists';
+import PlaylistDetail from './pages/PlaylistDetail';
 import Favorites from './pages/Favorites';
 import Upload from './pages/Upload';
 import Profile from './pages/Profile';
@@ -47,6 +48,7 @@ function App() {
           <Route path="/library" element={<PrivateRoute><Layout><Library /></Layout></PrivateRoute>} />
           <Route path="/lyrics" element={<PrivateRoute><Layout><LyricsPage /></Layout></PrivateRoute>} />
           <Route path="/playlists" element={<PrivateRoute><Layout><Playlists /></Layout></PrivateRoute>} />
+          <Route path="/playlists/:id" element={<PrivateRoute><Layout><PlaylistDetail /></Layout></PrivateRoute>} />
           <Route path="/favorites" element={<PrivateRoute><Layout><Favorites /></Layout></PrivateRoute>} />
           <Route path="/upload" element={<PrivateRoute><Layout><Upload /></Layout></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Layout><Profile /></Layout></PrivateRoute>} />

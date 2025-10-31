@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   Home,
@@ -9,13 +9,26 @@ import {
   User,
   LogOut,
   MessageSquare,
-  Library
+  Library,
+  Plus,
+  ListMusic
 } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
 import { signOut as logout } from '../services/supabaseAuth';
+import { usePlaylistStore } from '../stores/playlist';
+import CreatePlaylistModal from './CreatePlaylistModal';
 
 const Sidebar = () => {
   const { user } = useAuthStore();
+  const { playlists, loadUserPlaylists } = usePlaylistStore();
+  const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
+
+  // Load user playlists on mount
+  useEffect(() => {
+    if (user?.id) {
+      loadUserPlaylists(user.id);
+    }
+  }, [user, loadUserPlaylists]);
 
   const handleLogout = async () => {
     try {
@@ -31,7 +44,6 @@ const Sidebar = () => {
     { to: '/library', icon: Library, label: 'My Library' },
     { to: '/lyrics', icon: MessageSquare, label: 'Lyrics' },
     { to: '/favorites', icon: Heart, label: 'Favorites' },
-    { to: '/playlists', icon: Music, label: 'Playlists' },
     { to: '/upload', icon: Upload, label: 'Upload' },
     { to: '/profile', icon: User, label: 'Profile' },
   ];
@@ -54,7 +66,7 @@ const Sidebar = () => {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 py-6">
+      <nav className="px-4 py-6">
         <div className="space-y-2">
           {navItems.map((item) => (
             <NavLink
@@ -74,6 +86,54 @@ const Sidebar = () => {
           ))}
         </div>
       </nav>
+
+      {/* Playlists Section */}
+      <div className="px-4 pb-4 flex-1 overflow-y-auto">
+        <div className="flex items-center justify-between px-2 mb-3">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            My Playlists
+          </h3>
+          <button
+            onClick={() => setShowCreatePlaylist(true)}
+            className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-all duration-200"
+            title="Create Playlist"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-1">
+          {playlists.length === 0 ? (
+            <div className="px-4 py-6 text-center">
+              <ListMusic className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+              <p className="text-xs text-gray-500">No playlists yet</p>
+              <p className="text-xs text-gray-600 mt-1">Create your first playlist</p>
+            </div>
+          ) : (
+            playlists.map((playlist) => (
+              <NavLink
+                key={playlist.id}
+                to={`/playlists/${playlist.id}`}
+                className={({ isActive }) =>
+                  `flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+                    isActive
+                      ? 'bg-white/10 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`
+                }
+              >
+                <ListMusic className="h-4 w-4 flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{playlist.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {playlist.track_count || 0} songs
+                  </p>
+                </div>
+              </NavLink>
+            ))
+          )}
+        </div>
+      </div>
 
       {/* User Section */}
       <div className="p-4 border-t border-white/10 space-y-4">
@@ -109,6 +169,12 @@ const Sidebar = () => {
           <span className="font-medium text-sm">Logout</span>
         </button>
       </div>
+
+      {/* Create Playlist Modal */}
+      <CreatePlaylistModal 
+        isOpen={showCreatePlaylist} 
+        onClose={() => setShowCreatePlaylist(false)} 
+      />
     </aside>
   );
 };

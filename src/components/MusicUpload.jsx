@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../stores/auth';
+import { usePlaylistStore } from '../stores/playlist';
 import { uploadMusic } from '../services/supabaseMusicApi';
-import { Upload, Music, Image, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, Music, Image, X, CheckCircle, AlertCircle, ListMusic } from 'lucide-react';
 
 // File validation helpers
 const isValidAudioFile = (file) => {
@@ -18,12 +19,15 @@ const isValidImageFile = (file) => {
 
 const MusicUpload = ({ onUploadSuccess, onClose }) => {
   const { user } = useAuthStore();
+  const { playlists, loadUserPlaylists, addSongToPlaylist } = usePlaylistStore();
+  
   const [formData, setFormData] = useState({
     title: '',
     artist: '',
     album: '',
     genre: '',
-    duration: 0
+    duration: 0,
+    selectedPlaylists: [] // Array of playlist IDs
   });
   
   const [audioFile, setAudioFile] = useState(null);
@@ -34,12 +38,29 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // Load user's playlists on component mount
+  useEffect(() => {
+    if (user?.id) {
+      loadUserPlaylists(user.id);
+    }
+  }, [user, loadUserPlaylists]);
+
   // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }));
+  };
+
+  // Handle playlist selection (multiple)
+  const handlePlaylistToggle = (playlistId) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedPlaylists: prev.selectedPlaylists.includes(playlistId)
+        ? prev.selectedPlaylists.filter(id => id !== playlistId)
+        : [...prev.selectedPlaylists, playlistId]
     }));
   };
 
@@ -128,7 +149,7 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
     e.preventDefault();
     
     // Check if user is authenticated
-    if (!user || !user.uid) {
+    if (!user || !user.id) {
       setError('You must be logged in to upload music');
       return;
     }
@@ -171,14 +192,6 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
 
       console.log('🎵 Starting upload...');
       
-      // Get or create album first
-      const albumData = await getOrCreateAlbum(
-        formData.album.trim(),
-        formData.artist.trim(),
-        user.uid,
-        albumArtFile ? URL.createObjectURL(albumArtFile) : null
-      );
-      
       const result = await uploadMusic(
         audioFile,
         albumArtFile,
@@ -187,15 +200,24 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
           title: formData.title.trim(),
           artist: formData.artist.trim(),
           album: formData.album.trim(),
-          albumId: albumData.id,
           genre: formData.genre.trim() || 'Unknown',
           duration: formData.duration
         },
-        user.uid
+        user.id
       );
-      
-      // Increment track count for album
-      await incrementTrackCount(formData.album.trim());
+
+      // Add to selected playlists
+      if (formData.selectedPlaylists.length > 0 && result.id) {
+        console.log('🎵 Adding song to selected playlists...');
+        for (const playlistId of formData.selectedPlaylists) {
+          try {
+            await addSongToPlaylist(playlistId, result.id);
+            console.log(`✅ Added to playlist: ${playlistId}`);
+          } catch (playlistError) {
+            console.error(`Failed to add to playlist ${playlistId}:`, playlistError);
+          }
+        }
+      }
 
       clearInterval(progressInterval);
       setUploadProgress(100);
@@ -214,10 +236,12 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
           artist: '',
           album: '',
           genre: '',
-          duration: 0
+          duration: 0,
+          selectedPlaylists: []
         });
         setAudioFile(null);
         setAlbumArtFile(null);
+        setLyricsFile(null);
         setSuccess(false);
         setUploadProgress(0);
         if (onClose) onClose();
@@ -434,35 +458,71 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
-            
-            <div>
-              <label htmlFor="genre" className="block text-sm font-medium text-white mb-1">
-                Genre
-              </label>
-              <select
-                id="genre"
-                name="genre"
-                value={formData.genre}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-black bg-opacity-30 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
-              >
-                <option value="" className="bg-gray-800">Select genre</option>
-                <option value="Pop" className="bg-gray-800">Pop</option>
-                <option value="Rock" className="bg-gray-800">Rock</option>
-                <option value="Hip Hop" className="bg-gray-800">Hip Hop</option>
-                <option value="Electronic" className="bg-gray-800">Electronic</option>
-                <option value="Jazz" className="bg-gray-800">Jazz</option>
-                <option value="Classical" className="bg-gray-800">Classical</option>
-                <option value="Country" className="bg-gray-800">Country</option>
-                <option value="R&B" className="bg-gray-800">R&B</option>
-                <option value="Indie" className="bg-gray-800">Indie</option>
-                <option value="Alternative" className="bg-gray-800">Alternative</option>
-                <option value="Acoustic" className="bg-gray-800">Acoustic</option>
-                <option value="Ambient" className="bg-gray-800">Ambient</option>
-                <option value="Other" className="bg-gray-800">Other</option>
-              </select>
-            </div>
+          <div>
+            <label htmlFor="genre" className="block text-sm font-medium text-white mb-1">
+              Genre
+            </label>
+            <select
+              id="genre"
+              name="genre"
+              value={formData.genre}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 bg-black bg-opacity-30 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
+            >
+              <option value="" className="bg-gray-800">Select genre</option>
+              <option value="Pop" className="bg-gray-800">Pop</option>
+              <option value="Rock" className="bg-gray-800">Rock</option>
+              <option value="Hip Hop" className="bg-gray-800">Hip Hop</option>
+              <option value="Electronic" className="bg-gray-800">Electronic</option>
+              <option value="Jazz" className="bg-gray-800">Jazz</option>
+              <option value="Classical" className="bg-gray-800">Classical</option>
+              <option value="Country" className="bg-gray-800">Country</option>
+              <option value="R&B" className="bg-gray-800">R&B</option>
+              <option value="Indie" className="bg-gray-800">Indie</option>
+              <option value="Alternative" className="bg-gray-800">Alternative</option>
+              <option value="Acoustic" className="bg-gray-800">Acoustic</option>
+              <option value="Ambient" className="bg-gray-800">Ambient</option>
+              <option value="Other" className="bg-gray-800">Other</option>
+            </select>
+          </div>
+
+          {/* Add to Playlists Section */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              <ListMusic className="w-4 h-4 inline mr-1" />
+              Add to Playlists (Optional)
+            </label>
+            {playlists.length === 0 ? (
+              <div className="bg-black bg-opacity-30 border border-gray-600 rounded-lg p-3 text-center">
+                <p className="text-xs text-gray-400">No playlists available</p>
+                <p className="text-xs text-gray-500 mt-1">Create a playlist first</p>
+              </div>
+            ) : (
+              <div className="bg-black bg-opacity-30 border border-gray-600 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                {playlists.map((playlist) => (
+                  <label
+                    key={playlist.id}
+                    className="flex items-center space-x-3 cursor-pointer hover:bg-white hover:bg-opacity-5 p-2 rounded transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.selectedPlaylists.includes(playlist.id)}
+                      onChange={() => handlePlaylistToggle(playlist.id)}
+                      className="w-4 h-4 text-white bg-black bg-opacity-50 border-gray-600 rounded focus:ring-white focus:ring-2"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white truncate">{playlist.name}</p>
+                      <p className="text-xs text-gray-400">{playlist.track_count || 0} songs</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+            {formData.selectedPlaylists.length > 0 && (
+              <p className="text-xs text-gray-400 mt-2">
+                Will be added to {formData.selectedPlaylists.length} playlist{formData.selectedPlaylists.length > 1 ? 's' : ''}
+              </p>
+            )}
           </div>
         </div>
 

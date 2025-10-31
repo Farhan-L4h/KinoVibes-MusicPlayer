@@ -79,7 +79,7 @@ export const signOut = async () => {
   } catch (error) {
     console.error('Sign out error:', error);
     throw error;
-  }perbai
+  }
 };
 
 // Get current user
