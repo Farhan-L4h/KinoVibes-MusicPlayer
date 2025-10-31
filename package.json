@@ -12,6 +12,7 @@
     "firebase:ui": "firebase emulators:start --only auth,firestore,storage"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.78.0",
     "axios": "^1.12.2",
     "firebase": "^12.4.0",
     "howler": "^2.2.4",

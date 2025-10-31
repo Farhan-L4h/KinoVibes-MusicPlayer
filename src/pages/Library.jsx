@@ -88,9 +88,9 @@ const Library = () => {
     try {
       await deleteMusic(
         song.firestoreId,
-        song.audioUrl,
-        song.albumArt,
-        user.uid
+        song.audioPath,
+        song.albumArtPath,
+        song.lyricsPath
       );
       
       // Remove from local state

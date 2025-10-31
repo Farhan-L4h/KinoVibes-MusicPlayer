@@ -1,5 +1,5 @@
-// Local Music Library Service - Local Storage + Firestore
-// Manages local music files stored in project folder with metadata in Firestore
+// Music Library Service - Supabase Storage + Firestore
+// Manages music files in Supabase Storage with metadata in Firestore
 
 import { 
   collection, 
@@ -9,116 +9,97 @@ import {
   doc, 
   query, 
   orderBy,
-  updateDoc
+  updateDoc,
+  serverTimestamp,
+  where
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { 
+  uploadFile, 
+  deleteFile, 
+  BUCKETS,
+  isSupabaseConfigured 
+} from '../config/supabase';
 
 // Collection reference for music metadata
 const MUSIC_COLLECTION = 'music_library';
 
-// Local storage paths
-const MUSIC_BASE_PATH = '/music/uploads/';
-const ALBUM_ART_BASE_PATH = '/album-art/';
-const DEMO_MUSIC_PATH = '/music/demo/';
-
-// Backend API URL
-const API_BASE_URL = 'http://localhost:3001';
-
-// Save music file to local project folder and metadata to Firestore
+// Upload music to Supabase Storage and save metadata to Firestore
 export const uploadMusic = async (audioFile, albumArtFile, lyricsFile, metadata, userId) => {
   try {
     if (!audioFile) throw new Error('Audio file is required');
     
-    console.log('🎵 Starting music upload process...');
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase not configured. Please check your environment variables.');
+    }
+    
+    console.log('🎵 Starting music upload to Supabase...');
     const timestamp = Date.now();
     const sanitizedFileName = audioFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const audioFileName = `${userId}_${timestamp}_${sanitizedFileName}`;
-    const albumArtFileName = albumArtFile 
-      ? `${userId}_${timestamp}_${albumArtFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}` 
+    
+    // Generate file paths
+    const audioPath = `${userId}/${timestamp}_${sanitizedFileName}`;
+    const albumArtPath = albumArtFile 
+      ? `${userId}/${timestamp}_${albumArtFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}` 
       : null;
-    const lyricsFileName = lyricsFile
-      ? `${userId}_${timestamp}_${lyricsFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+    const lyricsPath = lyricsFile
+      ? `${userId}/${timestamp}_${lyricsFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
       : null;
     
-    // Construct local file paths (relative to public folder)
-    const audioPath = `${MUSIC_BASE_PATH}${audioFileName}`;
-    const albumArtPath = albumArtFile ? `${ALBUM_ART_BASE_PATH}${albumArtFileName}` : null;
-    const lyricsPath = lyricsFile ? `/lyrics/${lyricsFileName}` : null;
+    // Upload audio file to Supabase Storage
+    console.log('📤 Uploading audio to Supabase Storage...');
+    const audioUpload = await uploadFile(BUCKETS.MUSIC, audioPath, audioFile);
     
-    console.log('📤 Uploading files to backend API...');
-    
-    // Upload files to backend API
-    const formData = new FormData();
-    formData.append('audio', audioFile);
-    formData.append('audioFileName', audioFileName);
-    
+    // Upload album art if provided
+    let albumArtUpload = null;
     if (albumArtFile) {
-      formData.append('albumArt', albumArtFile);
-      formData.append('albumArtFileName', albumArtFileName);
+      console.log('📤 Uploading album art...');
+      albumArtUpload = await uploadFile(BUCKETS.ALBUM_ART, albumArtPath, albumArtFile);
     }
     
+    // Upload lyrics if provided
+    let lyricsUpload = null;
     if (lyricsFile) {
-      formData.append('lyrics', lyricsFile);
-      formData.append('lyricsFileName', lyricsFileName);
+      console.log('📤 Uploading lyrics...');
+      lyricsUpload = await uploadFile(BUCKETS.LYRICS, lyricsPath, lyricsFile);
     }
-    
-    // Upload to backend
-    const uploadResponse = await fetch(`${API_BASE_URL}/api/upload`, {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (!uploadResponse.ok) {
-      const error = await uploadResponse.json();
-      throw new Error(error.message || 'File upload failed');
-    }
-    
-    const uploadResult = await uploadResponse.json();
-    console.log('✅ Files uploaded successfully:', uploadResult);
     
     console.log('💾 Saving metadata to Firestore...');
-    // Save metadata to Firestore (file paths instead of Firebase URLs)
+    // Save metadata to Firestore with Supabase URLs
     const musicData = {
-      id: `local_${timestamp}`,
+      id: `supabase_${timestamp}`,
       title: metadata.title || 'Untitled',
       artist: metadata.artist || 'Unknown Artist',
       album: metadata.album || 'Unknown Album',
       albumId: metadata.albumId || null,
       genre: metadata.genre || 'Unknown',
       duration: metadata.duration || 0,
-      audioUrl: audioPath, // Local path instead of Firebase URL
-      albumArt: albumArtPath,
-      lyricsUrl: lyricsPath,
+      audioUrl: audioUpload.publicUrl,
+      audioPath: audioUpload.path, // For deletion
+      albumArt: albumArtUpload?.publicUrl || '/default-album.jpg',
+      albumArtPath: albumArtUpload?.path || null,
+      lyricsUrl: lyricsUpload?.publicUrl || null,
+      lyricsPath: lyricsUpload?.path || null,
       uploadedBy: userId,
-      uploadedAt: new Date(),
-      fileName: audioFileName,
+      uploadedAt: serverTimestamp(),
+      createdAt: new Date().toISOString(),
+      fileName: sanitizedFileName,
       fileSize: audioFile.size,
-      source: 'local',
+      source: 'supabase',
       isFullTrack: true
     };
     
     const docRef = await addDoc(collection(db, MUSIC_COLLECTION), musicData);
-    console.log('🎵 Music metadata saved successfully:', docRef.id);
+    console.log('✅ Music uploaded successfully! Firestore ID:', docRef.id);
     
     return { ...musicData, firestoreId: docRef.id };
   } catch (error) {
     console.error('❌ Error uploading music:', error);
-    
-    if (error.message?.includes('Firebase') || error.message?.includes('Firestore')) {
-      throw new Error('Database service temporarily unavailable. Please try again.');
-    }
-    
-    if (error.message?.includes('fetch') || error.message?.includes('upload')) {
-      throw new Error('Backend API not available. Please make sure the server is running on port 3001.');
-    }
-    
     throw error;
   }
 };
 
-
-
-// Get all music from local library
+// Get all music from library
 export const getAllMusic = async () => {
   try {
     const querySnapshot = await getDocs(
@@ -140,7 +121,7 @@ export const getAllMusic = async () => {
   }
 };
 
-// Search local music library
+// Search music library
 export const searchMusic = async (query, limit = 20) => {
   try {
     const allMusic = await getAllMusic();
@@ -167,12 +148,12 @@ export const getTrendingMusic = async () => {
   try {
     const allMusic = await getAllMusic();
     
-    // If we have local music, return the most recent ones
+    // If we have music, return the most recent ones
     if (allMusic.length > 0) {
       return allMusic.slice(0, 15);
     }
     
-    // Return demo music if no local music available
+    // Return demo music if no music available
     return getDemoMusic();
   } catch (error) {
     console.error('Error getting trending music:', error);
@@ -180,7 +161,7 @@ export const getTrendingMusic = async () => {
   }
 };
 
-// Get music by genre from local library
+// Get music by genre
 export const getMusicByGenre = async (genre) => {
   try {
     const allMusic = await getAllMusic();
@@ -193,7 +174,7 @@ export const getMusicByGenre = async (genre) => {
   }
 };
 
-// Get artist's tracks from local library
+// Get artist's tracks
 export const getArtistTopTracks = async (artistName) => {
   try {
     const allMusic = await getAllMusic();
@@ -206,37 +187,28 @@ export const getArtistTopTracks = async (artistName) => {
   }
 };
 
-// Delete music metadata from Firestore and files from server
-export const deleteMusic = async (firestoreId, audioUrl, albumArtUrl, lyricsUrl) => {
+// Delete music from Supabase Storage and Firestore
+export const deleteMusic = async (firestoreId, audioPath, albumArtPath, lyricsPath) => {
   try {
-    // Delete files from backend
-    if (audioUrl || albumArtUrl || lyricsUrl) {
-      try {
-        const deleteResponse = await fetch(`${API_BASE_URL}/api/files`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            audioPath: audioUrl,
-            albumArtPath: albumArtUrl,
-            lyricsPath: lyricsUrl
-          })
-        });
-        
-        if (deleteResponse.ok) {
-          console.log('✅ Files deleted from server');
-        } else {
-          console.warn('⚠️ Failed to delete files from server');
-        }
-      } catch (error) {
-        console.warn('⚠️ Backend API not available, files not deleted:', error.message);
-      }
+    // Delete files from Supabase Storage
+    if (audioPath) {
+      await deleteFile(BUCKETS.MUSIC, audioPath);
+      console.log('🗑️ Deleted audio from Supabase');
+    }
+    
+    if (albumArtPath) {
+      await deleteFile(BUCKETS.ALBUM_ART, albumArtPath);
+      console.log('🗑️ Deleted album art from Supabase');
+    }
+    
+    if (lyricsPath) {
+      await deleteFile(BUCKETS.LYRICS, lyricsPath);
+      console.log('🗑️ Deleted lyrics from Supabase');
     }
     
     // Delete metadata from Firestore
     await deleteDoc(doc(db, MUSIC_COLLECTION, firestoreId));
-    console.log('🗑️ Music metadata deleted successfully');
+    console.log('🗑️ Music metadata deleted from Firestore');
     
     return true;
   } catch (error) {
@@ -251,7 +223,7 @@ export const updateMusic = async (firestoreId, updates) => {
     const musicRef = doc(db, MUSIC_COLLECTION, firestoreId);
     await updateDoc(musicRef, {
       ...updates,
-      updatedAt: new Date()
+      updatedAt: serverTimestamp()
     });
     
     console.log('✅ Music updated successfully');
@@ -262,7 +234,7 @@ export const updateMusic = async (firestoreId, updates) => {
   }
 };
 
-// Demo music data - uses local or external demo files
+// Demo music data
 export const getDemoMusic = () => {
   return [
     {
@@ -272,7 +244,7 @@ export const getDemoMusic = () => {
       album: "Demo Album",
       duration: 180,
       albumArt: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop",
-      audioUrl: "/music/demo/chill-vibes.mp3", // Local demo file (or fallback to external)
+      audioUrl: "/music/demo/chill-vibes.mp3",
       genre: "Electronic",
       isFullTrack: true,
       source: 'demo'
@@ -324,84 +296,29 @@ export const getDemoMusic = () => {
       genre: "Hip Hop",
       isFullTrack: true,
       source: 'demo'
-    },
-    {
-      id: 'demo6',
-      title: "Acoustic Dreams",
-      artist: "Demo Artist 6",
-      album: "Unplugged Sessions",
-      duration: 267,
-      albumArt: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop",
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", // External fallback
-      genre: "Acoustic",
-      isFullTrack: true,
-      source: 'demo'
-    },
-    {
-      id: 'demo7',
-      title: "Electronic Pulse",
-      artist: "Demo Artist 7",
-      album: "Digital Waves",
-      duration: 198,
-      albumArt: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop",
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", 
-      genre: "Electronic",
-      isFullTrack: true,
-      source: 'demo'
-    },
-    {
-      id: 'demo8',
-      title: "Jazz Interlude",
-      artist: "Demo Artist 8",
-      album: "Smooth Collection",
-      duration: 234,
-      albumArt: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop",
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-      genre: "Jazz",
-      isFullTrack: true,
-      source: 'demo'
     }
   ];
 };
 
-// Utility function to get file extension
+// Utility functions
 export const getFileExtension = (filename) => {
   return filename.split('.').pop().toLowerCase();
 };
 
-// Utility function to validate audio file
 export const isValidAudioFile = (file) => {
   const validTypes = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'];
   const extension = getFileExtension(file.name);
   return validTypes.includes(extension) && file.type.startsWith('audio/');
 };
 
-// Utility function to validate image file for album art
 export const isValidImageFile = (file) => {
   const validTypes = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
   const extension = getFileExtension(file.name);
   return validTypes.includes(extension) && file.type.startsWith('image/');
 };
 
-// Check if local music library is configured
-export const isLocalLibraryConfigured = () => {
-  return true; // Always true since we use local storage + Firestore
-};
-
-// Get list of pending files (files that need to be saved manually)
-export const getPendingFiles = () => {
-  const audioFiles = JSON.parse(localStorage.getItem('pending_audio_files') || '[]');
-  const albumArtFiles = JSON.parse(localStorage.getItem('pending_album_art_files') || '[]');
-  return {
-    audioFiles,
-    albumArtFiles,
-    total: audioFiles.length + albumArtFiles.length
-  };
-};
-
-// Clear pending files after they've been saved
-export const clearPendingFiles = () => {
-  localStorage.removeItem('pending_audio_files');
-  localStorage.removeItem('pending_album_art_files');
-  console.log('✅ Pending files cleared');
+export const isValidLyricsFile = (file) => {
+  const validTypes = ['lrc', 'txt', 'json'];
+  const extension = getFileExtension(file.name);
+  return validTypes.includes(extension);
 };
