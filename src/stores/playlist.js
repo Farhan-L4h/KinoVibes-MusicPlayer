@@ -1,54 +1,165 @@
 import { create } from 'zustand';
-// TODO: Migrate to Supabase PostgreSQL
-// import { supabase } from '../config/supabase';
+import { supabase } from '../config/supabase';
+import {
+  createPlaylist as createPlaylistApi,
+  getUserPlaylists,
+  updatePlaylist as updatePlaylistApi,
+  deletePlaylist as deletePlaylistApi,
+  addTrackToPlaylist,
+  removeTrackFromPlaylist,
+  getPlaylistWithTracks
+} from '../services/supabasePlaylistApi';
 
 const usePlaylistStore = create((set, get) => ({
   playlists: [],
   loading: false,
   error: null,
 
-  // Create a new playlist (TODO: Migrate to Supabase)
+  // Create a new playlist
   createPlaylist: async (userId, playlistData) => {
-    console.warn('Playlist feature not yet migrated to Supabase');
-    set({ loading: false, error: 'Playlist feature coming soon' });
-    throw new Error('Playlist feature not yet migrated to Supabase');
+    try {
+      set({ loading: true, error: null });
+      
+      const newPlaylist = await createPlaylistApi(userId, playlistData);
+      
+      set(state => ({
+        playlists: [newPlaylist, ...state.playlists],
+        loading: false
+      }));
+
+      return newPlaylist;
+    } catch (error) {
+      console.error('Error creating playlist:', error);
+      set({ error: error.message, loading: false });
+      throw error;
+    }
   },
 
-  // Update playlist (TODO: Migrate to Supabase)
+  // Update playlist
   updatePlaylist: async (playlistId, updates) => {
-    console.warn('Playlist feature not yet migrated to Supabase');
-    set({ loading: false });
+    try {
+      set({ loading: true, error: null });
+      
+      const updatedPlaylist = await updatePlaylistApi(playlistId, updates);
+
+      set(state => ({
+        playlists: state.playlists.map(playlist =>
+          playlist.id === playlistId ? updatedPlaylist : playlist
+        ),
+        loading: false
+      }));
+    } catch (error) {
+      console.error('Error updating playlist:', error);
+      set({ error: error.message, loading: false });
+      throw error;
+    }
   },
 
-  // Delete playlist (TODO: Migrate to Supabase)
+  // Delete playlist
   deletePlaylist: async (playlistId) => {
-    console.warn('Playlist feature not yet migrated to Supabase');
-    set({ loading: false });
+    try {
+      set({ loading: true, error: null });
+      
+      await deletePlaylistApi(playlistId);
+      
+      set(state => ({
+        playlists: state.playlists.filter(playlist => playlist.id !== playlistId),
+        loading: false
+      }));
+    } catch (error) {
+      console.error('Error deleting playlist:', error);
+      set({ error: error.message, loading: false });
+      throw error;
+    }
   },
 
-  // Add song to playlist (TODO: Migrate to Supabase)
-  addSongToPlaylist: async (playlistId, song) => {
-    console.warn('Playlist feature not yet migrated to Supabase');
-    set({ loading: false });
+  // Add song to playlist
+  addSongToPlaylist: async (playlistId, musicId) => {
+    try {
+      set({ loading: true, error: null });
+      
+      await addTrackToPlaylist(playlistId, musicId);
+      
+      // Reload playlist to get updated track count
+      const playlist = await getPlaylistWithTracks(playlistId);
+      
+      set(state => ({
+        playlists: state.playlists.map(p =>
+          p.id === playlistId ? playlist : p
+        ),
+        loading: false
+      }));
+    } catch (error) {
+      console.error('Error adding song to playlist:', error);
+      set({ error: error.message, loading: false });
+      throw error;
+    }
   },
 
-  // Remove song from playlist (TODO: Migrate to Supabase)
-  removeSongFromPlaylist: async (playlistId, songId) => {
-    console.warn('Playlist feature not yet migrated to Supabase');
-    set({ loading: false });
+  // Remove song from playlist
+  removeSongFromPlaylist: async (playlistId, musicId) => {
+    try {
+      set({ loading: true, error: null });
+      
+      await removeTrackFromPlaylist(playlistId, musicId);
+      
+      // Reload playlist to get updated track count
+      const playlist = await getPlaylistWithTracks(playlistId);
+      
+      set(state => ({
+        playlists: state.playlists.map(p =>
+          p.id === playlistId ? playlist : p
+        ),
+        loading: false
+      }));
+    } catch (error) {
+      console.error('Error removing song from playlist:', error);
+      set({ error: error.message, loading: false });
+      throw error;
+    }
   },
 
-  // Load user's playlists (TODO: Migrate to Supabase)
+  // Load user's playlists
   loadUserPlaylists: async (userId) => {
-    console.warn('Playlist feature not yet migrated to Supabase');
-    set({ playlists: [], loading: false });
-    return [];
+    try {
+      set({ loading: true, error: null });
+      
+      const playlists = await getUserPlaylists(userId);
+
+      set({ playlists, loading: false });
+      return playlists;
+    } catch (error) {
+      console.error('Error loading playlists:', error);
+      set({ error: error.message, loading: false });
+      throw error;
+    }
   },
 
-  // Subscribe to user's playlists (TODO: Migrate to Supabase)
+  // Subscribe to user's playlists (Supabase Realtime)
   subscribeToUserPlaylists: (userId) => {
-    console.warn('Playlist feature not yet migrated to Supabase');
-    return () => {}; // Return empty unsubscribe function
+    const channel = supabase
+      .channel('playlists-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'playlists',
+          filter: `user_id=eq.${userId}`
+        },
+        async (payload) => {
+          console.log('Playlist changed:', payload);
+          // Reload playlists
+          const playlists = await getUserPlaylists(userId);
+          set({ playlists });
+        }
+      )
+      .subscribe();
+
+    // Return unsubscribe function
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   // Get playlist by ID

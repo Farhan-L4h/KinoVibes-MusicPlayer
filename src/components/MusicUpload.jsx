@@ -1,7 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../stores/auth';
 import { uploadMusic } from '../services/supabaseMusicApi';
 import { Upload, Music, Image, X, CheckCircle, AlertCircle } from 'lucide-react';
+
+// File validation helpers
+const isValidAudioFile = (file) => {
+  const validTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a', 'audio/aac', 'audio/flac', 'audio/x-m4a'];
+  const extension = file.name.split('.').pop().toLowerCase();
+  const validExtensions = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'];
+  return validTypes.some(type => file.type.includes(type.split('/')[1])) || validExtensions.includes(extension);
+};
+
+const isValidImageFile = (file) => {
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+  return validTypes.includes(file.type);
+};
 
 const MusicUpload = ({ onUploadSuccess, onClose }) => {
   const { user } = useAuthStore();
@@ -20,31 +33,6 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  
-  // Album management
-  const [albums, setAlbums] = useState([]);
-  const [showNewAlbum, setShowNewAlbum] = useState(false);
-  const [selectedAlbum, setSelectedAlbum] = useState('');
-  const [loadingAlbums, setLoadingAlbums] = useState(true);
-  
-  // Load user's albums
-  useEffect(() => {
-    if (user?.uid) {
-      loadAlbums();
-    }
-  }, [user]);
-  
-  const loadAlbums = async () => {
-    try {
-      setLoadingAlbums(true);
-      const userAlbums = await getUserAlbums(user.uid);
-      setAlbums(userAlbums);
-    } catch (error) {
-      console.error('Error loading albums:', error);
-    } finally {
-      setLoadingAlbums(false);
-    }
-  };
 
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -132,30 +120,6 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
       }
       
       setLyricsFile(file);
-    }
-  };
-
-  // Handle album selection
-  const handleAlbumChange = (e) => {
-    const value = e.target.value;
-    setSelectedAlbum(value);
-    
-    if (value === 'new') {
-      setShowNewAlbum(true);
-      setFormData(prev => ({ ...prev, album: '' }));
-    } else if (value === '') {
-      setShowNewAlbum(false);
-      setFormData(prev => ({ ...prev, album: '' }));
-    } else {
-      setShowNewAlbum(false);
-      const album = albums.find(a => a.id === value);
-      if (album) {
-        setFormData(prev => ({ 
-          ...prev, 
-          album: album.name,
-          artist: album.artist || prev.artist
-        }));
-      }
     }
   };
 
@@ -455,54 +419,20 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
           </div>
           
           <div>
-            <label htmlFor="album-select" className="block text-sm font-medium text-white mb-1">
+            <label htmlFor="album" className="block text-sm font-medium text-white mb-1">
               Album *
             </label>
-            {loadingAlbums ? (
-              <div className="w-full px-3 py-2 bg-black bg-opacity-30 text-gray-400 border border-gray-600 rounded-lg">
-                Loading albums...
-              </div>
-            ) : (
-              <select
-                id="album-select"
-                value={selectedAlbum}
-                onChange={handleAlbumChange}
-                className="w-full px-3 py-2 bg-black bg-opacity-30 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-white"
-                required={!showNewAlbum}
-              >
-                <option value="" className="bg-gray-800">Select album...</option>
-                {albums.map((album) => (
-                  <option key={album.id} value={album.id} className="bg-gray-800">
-                    {album.name} - {album.artist}
-                  </option>
-                ))}
-                <option value="new" className="bg-gray-800 font-semibold">
-                  <Plus className="w-4 h-4 inline" /> Create New Album
-                </option>
-              </select>
-            )}
+            <input
+              type="text"
+              id="album"
+              name="album"
+              value={formData.album}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 bg-black bg-opacity-30 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-white placeholder-gray-400"
+              placeholder="Enter album name"
+              required
+            />
           </div>
-          
-          {(showNewAlbum || selectedAlbum === 'new') && (
-            <div className="bg-white bg-opacity-5 p-4 rounded-lg border border-gray-600">
-              <label htmlFor="album" className="block text-sm font-medium text-white mb-1">
-                New Album Name *
-              </label>
-              <input
-                type="text"
-                id="album"
-                name="album"
-                value={formData.album}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-black bg-opacity-30 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-white placeholder-gray-400"
-                placeholder="Enter new album name"
-                required
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Album akan dibuat otomatis dengan artist dan cover dari lagu ini
-              </p>
-            </div>
-          )}
           
           <div className="grid grid-cols-2 gap-3">
             

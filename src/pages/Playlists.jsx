@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Music, 
-  Plus, 
-  Play, 
-  Pause, 
-  MoreVertical, 
-  Edit, 
+import {
+  Music,
+  Plus,
+  Play,
+  Pause,
+  MoreVertical,
+  Edit,
   Trash2,
   Clock,
   Heart
@@ -13,23 +13,26 @@ import {
 import { useAuthStore } from '../stores/auth';
 import { usePlaylistStore } from '../stores/playlist';
 import { useMusicStore } from '../stores/music';
+import { supabase } from '../config/supabase';
 
 const Playlists = () => {
   const { user } = useAuthStore();
-  const { 
-    playlists, 
-    loading, 
-    error, 
-    createPlaylist, 
-    updatePlaylist, 
+
+  const {
+    playlists,
+    loading,
+    error: playlistError, // rename biar gak tabrakan
+    createPlaylist,
+    updatePlaylist,
     deletePlaylist,
     loadUserPlaylists,
     addSongToPlaylist,
     removeSongFromPlaylist
   } = usePlaylistStore();
-  
+
+
   const { currentSong, isPlaying, playSong, togglePlay } = useMusicStore();
-  
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
@@ -37,29 +40,41 @@ const Playlists = () => {
   const [newPlaylistDescription, setNewPlaylistDescription] = useState('');
 
   useEffect(() => {
-    if (user) {
-      loadUserPlaylists(user.uid);
+    if (user?.id) {
+      loadUserPlaylists(user.id);
     }
   }, [user, loadUserPlaylists]);
 
-  const handleCreatePlaylist = async (e) => {
+  async function handleCreatePlaylist(e) {
     e.preventDefault();
-    if (!newPlaylistName.trim()) return;
 
-    try {
-      await createPlaylist(user.uid, {
-        name: newPlaylistName.trim(),
-        description: newPlaylistDescription.trim(),
-        isPublic: false
-      });
-      
-      setNewPlaylistName('');
-      setNewPlaylistDescription('');
-      setShowCreateModal(false);
-    } catch (error) {
-      console.error('Error creating playlist:', error);
+    const { data: auth } = await supabase.auth.getUser();
+    const authedUser = auth?.user;
+    if (!authedUser) {
+      throw new Error('Kamu harus login dulu');
     }
-  };
+
+    const name = newPlaylistName.trim();
+    const description = (newPlaylistDescription || '').trim() || null;
+    if (!name) return;
+
+    const { error: insertError } = await supabase
+      .from('playlists')
+      .insert({
+        name,
+        description,
+        is_public: false,
+        user_id: authedUser.id, // wajib biar lolos RLS
+      });
+
+    if (insertError) throw insertError;
+
+    await loadUserPlaylists(authedUser.id);
+    setShowCreateModal(false);
+    setNewPlaylistName('');
+    setNewPlaylistDescription('');
+  }
+
 
   const handleEditPlaylist = async (e) => {
     e.preventDefault();
@@ -70,7 +85,7 @@ const Playlists = () => {
         name: newPlaylistName.trim(),
         description: newPlaylistDescription.trim()
       });
-      
+
       setShowEditModal(false);
       setSelectedPlaylist(null);
       setNewPlaylistName('');
@@ -138,8 +153,8 @@ const Playlists = () => {
             {playlists.length} playlist{playlists.length !== 1 ? 's' : ''}
           </p>
         </div>
-        
-        <button 
+
+        <button
           onClick={() => setShowCreateModal(true)}
           className="bg-white text-black px-6 py-3 rounded-full hover:scale-105 transition-all duration-200 font-semibold flex items-center space-x-2"
         >
@@ -148,12 +163,12 @@ const Playlists = () => {
         </button>
       </div>
 
-      {/* Error Message */}
-      {error && (
+      {playlistError && (
         <div className="bg-red-500/20 border border-red-500/50 text-red-300 rounded-xl p-4">
-          {error}
+          {playlistError}
         </div>
       )}
+
 
       {/* Playlists Grid */}
       {playlists.length > 0 ? (
@@ -186,40 +201,40 @@ const Playlists = () => {
                     <Music className="w-16 h-16 text-gray-400" />
                   )}
                 </div>
-                
+
                 {/* Play Button Overlay */}
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl flex items-center justify-center">
                   <div className="flex items-center space-x-2">
-                    <button 
+                    <button
                       onClick={() => handlePlayPlaylist(playlist)}
                       className="bg-white text-black rounded-full p-3 hover:scale-110 transition-transform"
                     >
                       <Play className="w-6 h-6 ml-0.5" />
                     </button>
-                    
+
                     <div className="relative">
                       <button className="text-white hover:bg-white/20 rounded-full p-2 transition-colors">
                         <MoreVertical className="w-5 h-5" />
                       </button>
-                      
+
                       {/* Dropdown menu would go here */}
                     </div>
                   </div>
                 </div>
               </div>
-              
+
               {/* Playlist Info */}
               <div className="space-y-2">
                 <h3 className="text-white font-bold text-lg truncate">
                   {playlist.name}
                 </h3>
-                
+
                 {playlist.description && (
                   <p className="text-gray-400 text-sm line-clamp-2">
                     {playlist.description}
                   </p>
                 )}
-                
+
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <span>{playlist.songs?.length || 0} songs</span>
                   {playlist.songs && playlist.songs.length > 0 && (
@@ -227,17 +242,17 @@ const Playlists = () => {
                   )}
                 </div>
               </div>
-              
+
               {/* Action Buttons */}
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-800">
-                <button 
+                <button
                   onClick={() => openEditModal(playlist)}
                   className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/10"
                 >
                   <Edit className="w-4 h-4" />
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => handleDeletePlaylist(playlist.id)}
                   className="text-gray-400 hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-red-500/10"
                 >
@@ -255,7 +270,7 @@ const Playlists = () => {
           <p className="text-gray-400 mb-6 max-w-md mx-auto">
             Create your first playlist to organize your favorite songs and discover new music.
           </p>
-          <button 
+          <button
             onClick={() => setShowCreateModal(true)}
             className="bg-white text-black px-8 py-3 rounded-full hover:scale-105 transition-all duration-200 font-semibold"
           >
@@ -269,7 +284,7 @@ const Playlists = () => {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full">
             <h2 className="text-2xl font-bold text-white mb-6">Create New Playlist</h2>
-            
+
             <form onSubmit={handleCreatePlaylist} className="space-y-4">
               <div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
@@ -284,7 +299,7 @@ const Playlists = () => {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
                   Description (Optional)
@@ -297,7 +312,7 @@ const Playlists = () => {
                   className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white/20 resize-none"
                 />
               </div>
-              
+
               <div className="flex items-center space-x-4 pt-4">
                 <button
                   type="submit"
@@ -327,7 +342,7 @@ const Playlists = () => {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full">
             <h2 className="text-2xl font-bold text-white mb-6">Edit Playlist</h2>
-            
+
             <form onSubmit={handleEditPlaylist} className="space-y-4">
               <div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
@@ -341,7 +356,7 @@ const Playlists = () => {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
                   Description
@@ -353,7 +368,7 @@ const Playlists = () => {
                   className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white/20 resize-none"
                 />
               </div>
-              
+
               <div className="flex items-center space-x-4 pt-4">
                 <button
                   type="submit"
