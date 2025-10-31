@@ -8,7 +8,7 @@ import PrivateRoute from './components/PrivateRoute';
 import MusicPlayer from './components/MusicPlayer';
 
 // Pages
-import Home from './pages/Home';
+import Home from './pages/HomeYT'; // New YouTube Music style
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Search from './pages/Search';
@@ -18,7 +18,7 @@ import PlaylistDetail from './pages/PlaylistDetail';
 import Favorites from './pages/Favorites';
 import Upload from './pages/Upload';
 import Profile from './pages/Profile';
-import LyricsPage from './pages/LyricsPage';
+import LyricsPage from './pages/LyricsPageYT'; // New YouTube Music style lyrics
 
 // Styles
 import './App.css';
