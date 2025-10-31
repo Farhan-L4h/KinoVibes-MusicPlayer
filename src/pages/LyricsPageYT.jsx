@@ -1,11 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useMusicStore } from '../stores/music';
 import { Music2, ChevronDown } from 'lucide-react';
+import { gsap } from 'gsap';
+import AuroraBackground from '../components/AuroraBackground';
 
 const LyricsPageYT = () => {
-  const { currentTrack, currentTime } = useMusicStore();
+  const { currentTrack, currentTime, seekTo } = useMusicStore();
   const [lyrics, setLyrics] = useState([]);
   const [activeLine, setActiveLine] = useState(0);
+  const [autoScroll, setAutoScroll] = useState(true);
+  const lyricsContainerRef = useRef(null);
+  const activeLineRef = useRef(null);
 
   useEffect(() => {
     if (currentTrack?.lyricsUrl) {
@@ -33,6 +38,45 @@ const LyricsPageYT = () => {
       setActiveLine(currentIndex);
     }
   }, [currentTime, lyrics]);
+
+  // Auto-scroll effect
+  useEffect(() => {
+    if (!autoScroll || !activeLineRef.current || !lyricsContainerRef.current) return;
+
+    const container = lyricsContainerRef.current;
+    const activeLine = activeLineRef.current;
+
+    const containerHeight = container.clientHeight;
+    const lineOffsetTop = activeLine.offsetTop;
+    const lineHeight = activeLine.clientHeight;
+
+    // Calculate scroll position to center the active line
+    const scrollTo = Math.max(0, lineOffsetTop - (containerHeight / 2) + (lineHeight / 2));
+
+    // Smooth scroll with GSAP
+    gsap.to(container, {
+      scrollTop: scrollTo,
+      duration: 0.8,
+      ease: 'power2.out'
+    });
+  }, [activeLine, autoScroll]);
+
+  // Handle manual scroll
+  const handleScroll = () => {
+    if (autoScroll) {
+      setAutoScroll(false);
+      // Re-enable after 3 seconds
+      setTimeout(() => setAutoScroll(true), 3000);
+    }
+  };
+
+  // Handle click on lyric line
+  const handleLyricClick = (time) => {
+    if (seekTo && typeof time === 'number') {
+      seekTo(time);
+      setAutoScroll(true);
+    }
+  };
 
   const fetchLyrics = async (url) => {
     try {
@@ -92,7 +136,7 @@ const LyricsPageYT = () => {
   }
 
   return (
-    <div className="min-h-screen pb-32">
+    <div className="min-h-screen pb-32 relative">
       {/* Header with album art blur background */}
       <div className="relative mb-8 md:mb-12">
         {/* Background blur */}
@@ -148,48 +192,60 @@ const LyricsPageYT = () => {
       </div>
 
       {/* Lyrics Display - YouTube Music Style */}
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-4xl mx-auto px-4 relative z-10">
         {/* Scroll hint */}
         <div className="flex items-center justify-center mb-8 opacity-50">
           <ChevronDown className="w-5 h-5 text-yt-text-tertiary animate-bounce" />
         </div>
 
-        {/* Lyrics Lines */}
-        <div className="space-y-6 md:space-y-8">
-          {lyrics.map((line, index) => {
-            const isActive = index === activeLine;
-            const isPast = index < activeLine;
-            const isFuture = index > activeLine;
-            
-            return (
-              <div
-                key={index}
-                className={`
-                  transition-all duration-500 transform
-                  ${isActive ? 'scale-100 opacity-100' : ''}
-                  ${isPast ? 'scale-95 opacity-40' : ''}
-                  ${isFuture ? 'scale-95 opacity-40' : ''}
-                `}
-              >
-                <p
+        {/* Lyrics Lines Container */}
+        <div 
+          ref={lyricsContainerRef}
+          className="max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent"
+          onScroll={handleScroll}
+        >
+          {/* Top spacer for centering */}
+          <div className="h-[35vh]" />
+          
+          {/* Lyrics Lines */}
+          <div className="space-y-6 md:space-y-8">
+            {lyrics.map((line, index) => {
+              const isActive = index === activeLine;
+              const isPast = index < activeLine;
+              const isFuture = index > activeLine;
+              
+              return (
+                <div
+                  key={index}
+                  ref={isActive ? activeLineRef : null}
+                  onClick={() => handleLyricClick(line.time)}
                   className={`
-                    text-2xl md:text-4xl lg:text-5xl font-bold leading-relaxed
-                    transition-all duration-500
-                    ${isActive ? 'text-yt-text-primary text-shadow-lg' : 'text-yt-text-secondary'}
+                    transition-all duration-500 transform cursor-pointer
+                    ${isActive ? 'scale-100 opacity-100' : ''}
+                    ${isPast ? 'scale-95 opacity-40 hover:opacity-60' : ''}
+                    ${isFuture ? 'scale-95 opacity-40 hover:opacity-60' : ''}
                   `}
-                  style={{
-                    textShadow: isActive ? '0 0 30px rgba(255,255,255,0.3)' : 'none',
-                  }}
                 >
-                  {line.text}
-                </p>
-              </div>
-            );
-          })}
-        </div>
+                  <p
+                    className={`
+                      text-2xl md:text-4xl lg:text-5xl font-bold leading-relaxed
+                      transition-all duration-500
+                      ${isActive ? 'text-yt-text-primary text-shadow-lg' : 'text-yt-text-secondary'}
+                    `}
+                    style={{
+                      textShadow: isActive ? '0 0 30px rgba(255,255,255,0.3)' : 'none',
+                    }}
+                  >
+                    {line.text}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
 
-        {/* Bottom spacer */}
-        <div className="h-64" />
+          {/* Bottom spacer */}
+          <div className="h-[35vh]" />
+        </div>
       </div>
     </div>
   );

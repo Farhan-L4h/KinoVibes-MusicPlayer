@@ -1,7 +1,80 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import { Music, Volume2, VolumeX } from 'lucide-react';
 import { useMusicStore } from '../stores/music';
 import { fetchSynchronizedLyrics, getCurrentLyricLine } from '../services/lyricsApi';
+import { gsap } from 'gsap';
+import MusicWave from './MusicWave';
+
+// Split text animation for lyrics
+const LyricLine = forwardRef(({ line, isCurrent, isPast, onClick }, ref) => {
+  const textRef = useRef(null);
+  const previousIsCurrent = useRef(isCurrent);
+
+  useEffect(() => {
+    if (!textRef.current) return;
+
+    // Animate when becoming current
+    if (isCurrent && !previousIsCurrent.current) {
+      const text = line.text || '\u00A0';
+      const words = text.split(' ');
+      
+      // Clear and rebuild with spans
+      textRef.current.innerHTML = '';
+      words.forEach((word, wordIndex) => {
+        const wordSpan = document.createElement('span');
+        wordSpan.style.display = 'inline-block';
+        wordSpan.style.marginRight = '0.3em';
+        
+        const chars = word.split('');
+        chars.forEach((char, charIndex) => {
+          const charSpan = document.createElement('span');
+          charSpan.textContent = char;
+          charSpan.style.display = 'inline-block';
+          charSpan.style.opacity = '0';
+          charSpan.style.transform = 'translateY(10px)';
+          wordSpan.appendChild(charSpan);
+        });
+        
+        textRef.current.appendChild(wordSpan);
+      });
+
+      // Animate characters
+      gsap.to(textRef.current.querySelectorAll('span span'), {
+        opacity: 1,
+        y: 0,
+        duration: 0.4,
+        stagger: 0.02,
+        ease: 'power2.out',
+      });
+    } else if (!isCurrent && previousIsCurrent.current) {
+      // Reset to plain text when not current
+      textRef.current.innerHTML = line.text || '\u00A0';
+    }
+
+    previousIsCurrent.current = isCurrent;
+  }, [isCurrent, line.text]);
+
+  return (
+    <div
+      ref={ref}
+      onClick={onClick}
+      className={`transition-all duration-300 cursor-pointer py-2 mb-2 ${
+        isCurrent
+          ? 'text-white text-4xl lg:text-5xl xl:text-6xl font-bold'
+          : isPast
+          ? 'text-gray-600 text-xl lg:text-2xl hover:text-gray-500'
+          : 'text-gray-600 text-xl lg:text-2xl hover:text-gray-500'
+      }`}
+      style={{
+        lineHeight: '1.4',
+      }}
+    >
+      <div ref={textRef}>{line.text || '\u00A0'}</div>
+    </div>
+  );
+});
+
+LyricLine.displayName = 'LyricLine';
 
 const Lyrics = () => {
   const { currentSong, isPlaying, currentTime, seek } = useMusicStore();
@@ -29,27 +102,25 @@ const Lyrics = () => {
     }
   }, [lyrics, currentTime]);
 
-  // Auto-scroll to current lyric
+  // Auto-scroll to current lyric with GSAP
   useEffect(() => {
     if (!autoScroll || !currentLineRef.current || !lyricsContainerRef.current) return;
     
     const container = lyricsContainerRef.current;
     const currentLine = currentLineRef.current;
     
-    // Use requestAnimationFrame for smoother scrolling
-    requestAnimationFrame(() => {
-      const containerHeight = container.clientHeight;
-      const lineOffsetTop = currentLine.offsetTop;
-      const lineHeight = currentLine.clientHeight;
-      
-      // Calculate position to center the current line
-      const scrollTo = lineOffsetTop - (containerHeight / 2) + (lineHeight / 2);
-      
-      // Smooth scroll to position
-      container.scrollTo({
-        top: Math.max(0, scrollTo),
-        behavior: 'smooth'
-      });
+    const containerHeight = container.clientHeight;
+    const lineOffsetTop = currentLine.offsetTop;
+    const lineHeight = currentLine.clientHeight;
+    
+    // Calculate position to center the current line
+    const scrollTo = Math.max(0, lineOffsetTop - (containerHeight / 2) + (lineHeight / 2));
+    
+    // Smooth scroll with GSAP
+    gsap.to(container, {
+      scrollTop: scrollTo,
+      duration: 0.6,
+      ease: 'power2.out'
     });
   }, [currentLyricData?.current, autoScroll]);
 
@@ -135,16 +206,12 @@ const Lyrics = () => {
                 <p className="text-gray-500 text-sm mt-1">{currentSong.album}</p>
                 
                 {/* Status Indicator */}
-                <div className="mt-4 flex items-center gap-2">
+                <div className="mt-4 flex items-center gap-3">
+                  <div className="text-green-500">
+                    <MusicWave isPlaying={isPlaying} barCount={4} />
+                  </div>
                   {isPlaying ? (
-                    <>
-                      <div className="flex gap-1">
-                        <div className="w-1 h-4 bg-green-500 animate-pulse"></div>
-                        <div className="w-1 h-4 bg-green-500 animate-pulse animation-delay-1000"></div>
-                        <div className="w-1 h-4 bg-green-500 animate-pulse animation-delay-2000"></div>
-                      </div>
-                      <span className="text-green-500 text-sm font-medium">Now playing</span>
-                    </>
+                    <span className="text-green-500 text-sm font-medium">Now playing</span>
                   ) : (
                     <span className="text-gray-500 text-sm">Paused</span>
                   )}
@@ -213,23 +280,14 @@ const Lyrics = () => {
                       lyrics.indexOf(currentLyricData.current) > index;
 
                     return (
-                      <div
+                      <LyricLine
                         key={index}
-                        ref={isCurrent ? currentLineRef : null}
+                        line={line}
+                        isCurrent={isCurrent}
+                        isPast={isPast}
                         onClick={() => handleLyricClick(line.time)}
-                        className={`transition-all duration-200 cursor-pointer py-2 mb-2 ${
-                          isCurrent
-                            ? 'text-white text-4xl lg:text-5xl xl:text-6xl font-bold'
-                            : isPast
-                            ? 'text-gray-600 text-xl lg:text-2xl hover:text-gray-500'
-                            : 'text-gray-600 text-xl lg:text-2xl hover:text-gray-500'
-                        }`}
-                        style={{
-                          lineHeight: '1.4',
-                        }}
-                      >
-                        {line.text || '\u00A0'}
-                      </div>
+                        ref={isCurrent ? currentLineRef : null}
+                      />
                     );
                   })}
                   

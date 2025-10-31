@@ -3,6 +3,8 @@ import { useAuthStore } from '../stores/auth';
 import { useMusicStore } from '../stores/music';
 import { getAllMusic, deleteMusic } from '../services/supabaseMusicApi';
 import MusicUpload from '../components/MusicUpload';
+import SplitText from '../components/SplitText';
+import FadeInView from '../components/FadeInView';
 import { 
   Upload, 
   Music, 
@@ -13,7 +15,8 @@ import {
   Trash2,
   Clock,
   User,
-  Disc3
+  Disc3,
+  AlertTriangle
 } from 'lucide-react';
 
 const Library = () => {
@@ -145,14 +148,17 @@ const Library = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">My Music Library</h1>
-          <p className="text-gray-400">
+          <SplitText className="text-3xl font-bold text-white mb-2" delay={0.1}>
+            My Music Library
+          </SplitText>
+          <p className="text-gray-400 animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
             {musicLibrary.length} {musicLibrary.length === 1 ? 'track' : 'tracks'} in your library
           </p>
         </div>
         <button
           onClick={() => setShowUploadModal(true)}
-          className="retro-button mt-4 sm:mt-0"
+          className="retro-button mt-4 sm:mt-0 animate-fade-in-up"
+          style={{ animationDelay: '0.8s' }}
         >
           <Plus className="w-4 h-4 mr-2" />
           Upload Music
@@ -215,7 +221,7 @@ const Library = () => {
           </div>
         ) : (
           /* Music Grid */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+          <FadeInView className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6" stagger={0.05}>
             {filteredMusic.map((song) => (
               <div
                 key={song.firestoreId || song.id}
@@ -283,7 +289,7 @@ const Library = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </FadeInView>
         )}
 
       {/* Upload Modal */}

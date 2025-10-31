@@ -6,6 +6,8 @@ import { useMusicStore } from '../stores/music';
 import { useAuthStore } from '../stores/auth';
 import { getPlaylistWithTracks } from '../services/supabasePlaylistApi';
 import LoadingSpinner from '../components/LoadingSpinner';
+import SplitText from '../components/SplitText';
+import FadeInView from '../components/FadeInView';
 
 const PlaylistDetail = () => {
   const { id } = useParams();
@@ -125,16 +127,18 @@ const PlaylistDetail = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-end space-x-6">
             {/* Playlist Cover */}
-            <div className="w-48 h-48 bg-gradient-to-br from-purple-600 to-purple-900 rounded-2xl shadow-2xl flex items-center justify-center flex-shrink-0">
+            <div className="w-48 h-48 bg-gradient-to-br from-purple-600 to-purple-900 rounded-2xl shadow-2xl flex items-center justify-center flex-shrink-0 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
               <Play className="w-20 h-20 text-white/80" />
             </div>
 
             {/* Playlist Info */}
             <div className="flex-1 pb-4">
-              <p className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-2">
+              <p className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-2 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
                 Playlist
               </p>
-              <h1 className="text-5xl font-bold mb-4">{playlist.name}</h1>
+              <SplitText className="text-5xl font-bold mb-4" delay={0.4}>
+                {playlist.name}
+              </SplitText>
               {playlist.description && (
                 <p className="text-gray-300 mb-4">{playlist.description}</p>
               )}
@@ -177,7 +181,7 @@ const PlaylistDetail = () => {
           ) : (
             <div className="space-y-2">
               {/* Table Header */}
-              <div className="grid grid-cols-[50px_1fr_200px_100px_80px] gap-4 px-4 py-2 text-sm text-gray-400 border-b border-white/10">
+              <div className="grid grid-cols-[50px_1fr_200px_100px_80px] gap-4 px-4 py-2 text-sm text-gray-400 border-b border-white/10 animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
                 <div className="text-center">#</div>
                 <div>Title</div>
                 <div>Album</div>
@@ -192,6 +196,7 @@ const PlaylistDetail = () => {
               </div>
 
               {/* Tracks */}
+              <FadeInView delay={0.7} stagger={0.05}>
               {tracks.map((track, index) => (
                 <div
                   key={track.id}
@@ -250,6 +255,7 @@ const PlaylistDetail = () => {
                   </div>
                 </div>
               ))}
+              </FadeInView>
             </div>
           )}
         </div>

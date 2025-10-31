@@ -2,11 +2,15 @@ import React from 'react';
 import Sidebar from './SidebarYT'; // New YouTube Music style
 import MusicPlayer from './MusicPlayerYT'; // New YouTube Music style
 import AmbienceBackground from './AmbienceBackground';
+import AuroraBackground from './AuroraBackground';
 import MobileBottomNav from './MobileBottomNav';
 
 const Layout = ({ children }) => {
   return (
     <div className="h-screen bg-yt-bg-primary flex overflow-hidden relative">
+      {/* Aurora Background Effect */}
+      <AuroraBackground />
+      
       {/* Ambience Background Effect */}
       <AmbienceBackground />
       

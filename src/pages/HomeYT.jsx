@@ -4,6 +4,8 @@ import { useMusicStore } from '../stores/music';
 import { Play, Pause, TrendingUp, Clock, Plus, ListMusic } from 'lucide-react';
 import { getTrendingMusic, getAllMusic } from '../services/supabaseMusicApi';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AuroraBackground from '../components/AuroraBackground';
+import FadeInView from '../components/FadeInView';
 
 const HomeYT = () => {
   const { user } = useAuthStore();
@@ -50,9 +52,9 @@ const HomeYT = () => {
   }
 
   return (
-    <div className="min-h-screen pb-32 animate-fade-in">
+    <div className="min-h-screen pb-32 relative">
       {/* Welcome Section */}
-      <div className="mb-8">
+      <div className="mb-8 relative z-10 animate-fade-in-up">
         <h1 className="text-3xl md:text-4xl font-bold text-yt-text-primary mb-2">
           Welcome back{user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''}! 👋
         </h1>
@@ -62,7 +64,7 @@ const HomeYT = () => {
       </div>
 
       {/* Quick Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      <FadeInView className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 relative z-10" delay={0.3}>
         <div className="bg-yt-bg-elevated/50 backdrop-blur-md rounded-2xl p-5 border border-white/5 hover:border-white/10 transition-all">
           <div className="flex items-center justify-between mb-2">
             <ListMusic className="w-5 h-5 text-yt-text-secondary" />
@@ -81,11 +83,11 @@ const HomeYT = () => {
           </div>
           <div className="text-xs text-yt-text-secondary">Hours Played</div>
         </div>
-      </div>
+      </FadeInView>
 
       {/* Recently Played */}
       {recentlyPlayed.length > 0 && (
-        <div className="mb-12">
+        <div className="mb-12 relative z-10">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-yt-text-primary">Quick picks</h2>
           </div>
@@ -146,7 +148,7 @@ const HomeYT = () => {
       )}
 
       {/* Trending Now - YouTube Music List Style */}
-      <div>
+      <div className="relative z-10">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-yt-brand/10 rounded-full flex items-center justify-center">

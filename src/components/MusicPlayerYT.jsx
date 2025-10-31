@@ -49,7 +49,8 @@ const MusicPlayerYT = () => {
       }
     };
 
-    const interval = setInterval(updateTime, 1000);
+    // Update every 100ms for smoother lyrics sync
+    const interval = setInterval(updateTime, 100);
     return () => clearInterval(interval);
   }, [howl, isPlaying]);
 

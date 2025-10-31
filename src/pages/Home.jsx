@@ -4,6 +4,9 @@ import { useMusicStore } from '../stores/music';
 import { Music, TrendingUp, Clock, Heart, Play, Pause, Upload, Plus } from 'lucide-react';
 import { getTrendingMusic, getAllMusic } from '../services/supabaseMusicApi';
 import MusicUpload from '../components/MusicUpload';
+import AuroraBackground from '../components/AuroraBackground';
+import SplitText from '../components/SplitText';
+import FadeInView from '../components/FadeInView';
 
 const Home = () => {
   const { user } = useAuthStore();
@@ -121,22 +124,22 @@ const Home = () => {
   );
 
   return (
-    <div className="space-y-8 w-full">
+    <div className="space-y-8 w-full relative">
       {/* Welcome Section */}
-      <div className="w-full">
+      <div className="w-full relative z-10">
         <div className="retro-card p-8 max-w-4xl mx-auto text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Welcome back, <span className="text-gray-300">{user?.displayName || user?.email?.split('@')[0]}</span>! 👋
-          </h1>
-          <p className="text-gray-400 text-lg">
+          <SplitText className="text-3xl md:text-4xl font-bold text-white mb-4" delay={0.2}>
+            Welcome back, {user?.displayName || user?.email?.split('@')[0]}! 👋
+          </SplitText>
+          <p className="text-gray-400 text-lg opacity-0 animate-fade-in-up" style={{ animationDelay: '0.8s' }}>
             Ready to discover your next favorite song?
           </p>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="w-full">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
+      <div className="w-full relative z-10">
+        <FadeInView className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-5xl mx-auto" delay={1}>
           <div className="retro-card p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -184,11 +187,11 @@ const Home = () => {
               </div>
             </div>
           </div>
-        </div>
+        </FadeInView>
       </div>
 
       {/* Music Sections */}
-      <div className="w-full">
+      <div className="w-full relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
           {/* Your Music */}
           <div className="retro-card p-6">
@@ -237,7 +240,7 @@ const Home = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="w-full">
+      <div className="w-full relative z-10">
         <div className="retro-card p-6 max-w-5xl mx-auto">
           <h2 className="text-xl font-bold text-white mb-6 flex items-center justify-center">
             <div className="w-2 h-2 bg-white rounded-full mr-3"></div>

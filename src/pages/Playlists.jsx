@@ -14,6 +14,8 @@ import { useAuthStore } from '../stores/auth';
 import { usePlaylistStore } from '../stores/playlist';
 import { useMusicStore } from '../stores/music';
 import { supabase } from '../config/supabase';
+import SplitText from '../components/SplitText';
+import FadeInView from '../components/FadeInView';
 
 const Playlists = () => {
   const { user } = useAuthStore();
@@ -146,17 +148,18 @@ const Playlists = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl lg:text-5xl font-bold text-white mb-2">
+          <SplitText className="text-4xl lg:text-5xl font-bold text-white mb-2" delay={0.1}>
             Your Playlists
-          </h1>
-          <p className="text-gray-300 text-lg">
+          </SplitText>
+          <p className="text-gray-300 text-lg animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
             {playlists.length} playlist{playlists.length !== 1 ? 's' : ''}
           </p>
         </div>
 
         <button
           onClick={() => setShowCreateModal(true)}
-          className="bg-white text-black px-6 py-3 rounded-full hover:scale-105 transition-all duration-200 font-semibold flex items-center space-x-2"
+          className="bg-white text-black px-6 py-3 rounded-full hover:scale-105 transition-all duration-200 font-semibold flex items-center space-x-2 animate-fade-in-up"
+          style={{ animationDelay: '0.8s' }}
         >
           <Plus className="w-5 h-5" />
           <span>Create Playlist</span>
@@ -172,7 +175,7 @@ const Playlists = () => {
 
       {/* Playlists Grid */}
       {playlists.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <FadeInView className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" delay={0.3} stagger={0.1}>
           {playlists.map((playlist) => (
             <div
               key={playlist.id}
@@ -261,7 +264,7 @@ const Playlists = () => {
               </div>
             </div>
           ))}
-        </div>
+        </FadeInView>
       ) : (
         /* Empty State */
         <div className="bg-gray-900/30 rounded-2xl p-12 text-center">

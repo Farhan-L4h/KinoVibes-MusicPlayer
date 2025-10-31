@@ -8,6 +8,8 @@ import {
 import { useMusicStore } from '../stores/music';
 import { useAuthStore } from '../stores/auth';
 import MusicUpload from '../components/MusicUpload';
+import SplitText from '../components/SplitText';
+import FadeInView from '../components/FadeInView';
 
 const Search = () => {
   const [query, setQuery] = useState('');
@@ -166,10 +168,10 @@ const Search = () => {
     <div className="space-y-8">
       {/* Search Header */}
       <div className="text-center pb-6">
-        <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
+        <SplitText className="text-4xl lg:text-5xl font-bold text-white mb-4" delay={0.1}>
           Your Music Library
-        </h1>
-        <p className="text-gray-300 text-lg">
+        </SplitText>
+        <p className="text-gray-300 text-lg animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
           Search and discover your uploaded music collection
         </p>
       </div>
@@ -235,11 +237,11 @@ const Search = () => {
               <span>Full Track Available</span>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+          <FadeInView className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4" stagger={0.05}>
             {searchResults.map((song) => (
               <SongCard key={song.id} song={song} />
             ))}
-          </div>
+          </FadeInView>
         </div>
       )}
 
@@ -259,11 +261,11 @@ const Search = () => {
           </div>
           
           {trendingMusic.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            <FadeInView className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4" stagger={0.05}>
               {trendingMusic.map((song) => (
                 <SongCard key={song.id} song={song} />
               ))}
-            </div>
+            </FadeInView>
           ) : (
             /* Empty State for New Users */
             <div className="retro-card p-12 text-center">

@@ -6,6 +6,7 @@ import { useAuthStore } from './stores/auth';
 import Layout from './components/Layout';
 import PrivateRoute from './components/PrivateRoute';
 import MusicPlayer from './components/MusicPlayer';
+import PageTransition from './components/PageTransition';
 
 // Pages
 import Home from './pages/HomeYT'; // New YouTube Music style
@@ -43,15 +44,15 @@ function App() {
           <Route path="/register" element={<Register />} />
           
           {/* Protected routes */}
-          <Route path="/" element={<PrivateRoute><Layout><Home /></Layout></PrivateRoute>} />
-          <Route path="/search" element={<PrivateRoute><Layout><Search /></Layout></PrivateRoute>} />
-          <Route path="/library" element={<PrivateRoute><Layout><Library /></Layout></PrivateRoute>} />
-          <Route path="/lyrics" element={<PrivateRoute><Layout><LyricsPage /></Layout></PrivateRoute>} />
-          <Route path="/playlists" element={<PrivateRoute><Layout><Playlists /></Layout></PrivateRoute>} />
-          <Route path="/playlists/:id" element={<PrivateRoute><Layout><PlaylistDetail /></Layout></PrivateRoute>} />
-          <Route path="/favorites" element={<PrivateRoute><Layout><Favorites /></Layout></PrivateRoute>} />
-          <Route path="/upload" element={<PrivateRoute><Layout><Upload /></Layout></PrivateRoute>} />
-          <Route path="/profile" element={<PrivateRoute><Layout><Profile /></Layout></PrivateRoute>} />
+          <Route path="/" element={<PrivateRoute><Layout><PageTransition><Home /></PageTransition></Layout></PrivateRoute>} />
+          <Route path="/search" element={<PrivateRoute><Layout><PageTransition><Search /></PageTransition></Layout></PrivateRoute>} />
+          <Route path="/library" element={<PrivateRoute><Layout><PageTransition><Library /></PageTransition></Layout></PrivateRoute>} />
+          <Route path="/lyrics" element={<PrivateRoute><Layout><PageTransition><LyricsPage /></PageTransition></Layout></PrivateRoute>} />
+          <Route path="/playlists" element={<PrivateRoute><Layout><PageTransition><Playlists /></PageTransition></Layout></PrivateRoute>} />
+          <Route path="/playlists/:id" element={<PrivateRoute><Layout><PageTransition><PlaylistDetail /></PageTransition></Layout></PrivateRoute>} />
+          <Route path="/favorites" element={<PrivateRoute><Layout><PageTransition><Favorites /></PageTransition></Layout></PrivateRoute>} />
+          <Route path="/upload" element={<PrivateRoute><Layout><PageTransition><Upload /></PageTransition></Layout></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><Layout><PageTransition><Profile /></PageTransition></Layout></PrivateRoute>} />
         </Routes>
       </div>
     </Router>
