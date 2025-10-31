@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/auth';
 import { useMusicStore } from '../stores/music';
-import { getAllMusic, deleteMusic } from '../services/musicApi';
+import { getAllMusic, deleteMusic } from '../services/supabaseMusicApi';
 import MusicUpload from '../components/MusicUpload';
 import { 
   Upload, 

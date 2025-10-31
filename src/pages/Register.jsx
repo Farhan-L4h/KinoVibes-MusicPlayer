@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
-import { signUp, signInWithGoogle } from '../services/auth';
+import { signUp, signInWithGoogle } from '../services/supabaseAuth';
 import { useAuthStore } from '../stores/auth';
 
 const Register = () => {

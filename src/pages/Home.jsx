@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/auth';
 import { useMusicStore } from '../stores/music';
 import { Music, TrendingUp, Clock, Heart, Play, Pause, Upload, Plus } from 'lucide-react';
-import { getDemoMusic, getTrendingMusic, getAllMusic } from '../services/musicApi';
+import { getTrendingMusic, getAllMusic } from '../services/supabaseMusicApi';
 import MusicUpload from '../components/MusicUpload';
 
 const Home = () => {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { signIn, signInWithGoogle } from '../services/auth';
+import { signIn, signInWithGoogle } from '../services/supabaseAuth';
 import { useAuthStore } from '../stores/auth';
 
 const Login = () => {

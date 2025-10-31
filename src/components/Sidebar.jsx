@@ -12,7 +12,7 @@ import {
   Library
 } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
-import { logout } from '../services/auth';
+import { signOut as logout } from '../services/supabaseAuth';
 
 const Sidebar = () => {
   const { user } = useAuthStore();

@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuthStore } from '../stores/auth';
-import { uploadMusic, isValidAudioFile, isValidImageFile } from '../services/musicApi';
-import { getUserAlbums, getOrCreateAlbum, incrementTrackCount } from '../services/albumApi';
-import { Upload, Music, Image, X, CheckCircle, AlertCircle, Plus } from 'lucide-react';
+import { uploadMusic } from '../services/supabaseMusicApi';
+import { Upload, Music, Image, X, CheckCircle, AlertCircle } from 'lucide-react';
 
 const MusicUpload = ({ onUploadSuccess, onClose }) => {
   const { user } = useAuthStore();

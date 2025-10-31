@@ -4,7 +4,7 @@ import {
   searchMusic,
   getTrendingMusic,
   getAllMusic
-} from '../services/musicApi';
+} from '../services/supabaseMusicApi';
 import { useMusicStore } from '../stores/music';
 import { useAuthStore } from '../stores/auth';
 import MusicUpload from '../components/MusicUpload';

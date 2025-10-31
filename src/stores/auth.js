@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { onAuthStateChange } from '../services/auth';
+import { onAuthStateChange } from '../services/supabaseAuth';
 
 export const useAuthStore = create((set) => ({
   user: null,

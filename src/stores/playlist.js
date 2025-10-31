@@ -1,219 +1,54 @@
 import { create } from 'zustand';
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy,
-  onSnapshot 
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+// TODO: Migrate to Supabase PostgreSQL
+// import { supabase } from '../config/supabase';
 
 const usePlaylistStore = create((set, get) => ({
   playlists: [],
   loading: false,
   error: null,
 
-  // Create a new playlist
+  // Create a new playlist (TODO: Migrate to Supabase)
   createPlaylist: async (userId, playlistData) => {
-    try {
-      set({ loading: true, error: null });
-      
-      const playlistDoc = {
-        ...playlistData,
-        userId,
-        songs: [],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-
-      const docRef = await addDoc(collection(db, 'playlists'), playlistDoc);
-      
-      const newPlaylist = {
-        id: docRef.id,
-        ...playlistDoc
-      };
-
-      set(state => ({
-        playlists: [...state.playlists, newPlaylist],
-        loading: false
-      }));
-
-      return newPlaylist;
-    } catch (error) {
-      console.error('Error creating playlist:', error);
-      set({ error: error.message, loading: false });
-      throw error;
-    }
+    console.warn('Playlist feature not yet migrated to Supabase');
+    set({ loading: false, error: 'Playlist feature coming soon' });
+    throw new Error('Playlist feature not yet migrated to Supabase');
   },
 
-  // Update playlist
+  // Update playlist (TODO: Migrate to Supabase)
   updatePlaylist: async (playlistId, updates) => {
-    try {
-      set({ loading: true, error: null });
-      
-      const playlistRef = doc(db, 'playlists', playlistId);
-      const updateData = {
-        ...updates,
-        updatedAt: new Date()
-      };
-      
-      await updateDoc(playlistRef, updateData);
-
-      set(state => ({
-        playlists: state.playlists.map(playlist =>
-          playlist.id === playlistId
-            ? { ...playlist, ...updateData }
-            : playlist
-        ),
-        loading: false
-      }));
-    } catch (error) {
-      console.error('Error updating playlist:', error);
-      set({ error: error.message, loading: false });
-      throw error;
-    }
+    console.warn('Playlist feature not yet migrated to Supabase');
+    set({ loading: false });
   },
 
-  // Delete playlist
+  // Delete playlist (TODO: Migrate to Supabase)
   deletePlaylist: async (playlistId) => {
-    try {
-      set({ loading: true, error: null });
-      
-      await deleteDoc(doc(db, 'playlists', playlistId));
-      
-      set(state => ({
-        playlists: state.playlists.filter(playlist => playlist.id !== playlistId),
-        loading: false
-      }));
-    } catch (error) {
-      console.error('Error deleting playlist:', error);
-      set({ error: error.message, loading: false });
-      throw error;
-    }
+    console.warn('Playlist feature not yet migrated to Supabase');
+    set({ loading: false });
   },
 
-  // Add song to playlist
+  // Add song to playlist (TODO: Migrate to Supabase)
   addSongToPlaylist: async (playlistId, song) => {
-    try {
-      set({ loading: true, error: null });
-      
-      const playlist = get().playlists.find(p => p.id === playlistId);
-      if (!playlist) {
-        throw new Error('Playlist not found');
-      }
-
-      // Check if song already exists in playlist
-      const songExists = playlist.songs.some(s => s.id === song.id);
-      if (songExists) {
-        throw new Error('Song already exists in playlist');
-      }
-
-      const updatedSongs = [...playlist.songs, song];
-      
-      const playlistRef = doc(db, 'playlists', playlistId);
-      await updateDoc(playlistRef, {
-        songs: updatedSongs,
-        updatedAt: new Date()
-      });
-
-      set(state => ({
-        playlists: state.playlists.map(p =>
-          p.id === playlistId
-            ? { ...p, songs: updatedSongs, updatedAt: new Date() }
-            : p
-        ),
-        loading: false
-      }));
-    } catch (error) {
-      console.error('Error adding song to playlist:', error);
-      set({ error: error.message, loading: false });
-      throw error;
-    }
+    console.warn('Playlist feature not yet migrated to Supabase');
+    set({ loading: false });
   },
 
-  // Remove song from playlist
+  // Remove song from playlist (TODO: Migrate to Supabase)
   removeSongFromPlaylist: async (playlistId, songId) => {
-    try {
-      set({ loading: true, error: null });
-      
-      const playlist = get().playlists.find(p => p.id === playlistId);
-      if (!playlist) {
-        throw new Error('Playlist not found');
-      }
-
-      const updatedSongs = playlist.songs.filter(song => song.id !== songId);
-      
-      const playlistRef = doc(db, 'playlists', playlistId);
-      await updateDoc(playlistRef, {
-        songs: updatedSongs,
-        updatedAt: new Date()
-      });
-
-      set(state => ({
-        playlists: state.playlists.map(p =>
-          p.id === playlistId
-            ? { ...p, songs: updatedSongs, updatedAt: new Date() }
-            : p
-        ),
-        loading: false
-      }));
-    } catch (error) {
-      console.error('Error removing song from playlist:', error);
-      set({ error: error.message, loading: false });
-      throw error;
-    }
+    console.warn('Playlist feature not yet migrated to Supabase');
+    set({ loading: false });
   },
 
-  // Load user's playlists
+  // Load user's playlists (TODO: Migrate to Supabase)
   loadUserPlaylists: async (userId) => {
-    try {
-      set({ loading: true, error: null });
-      
-      const playlistsQuery = query(
-        collection(db, 'playlists'),
-        where('userId', '==', userId),
-        orderBy('updatedAt', 'desc')
-      );
-
-      const querySnapshot = await getDocs(playlistsQuery);
-      const playlists = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      set({ playlists, loading: false });
-      return playlists;
-    } catch (error) {
-      console.error('Error loading playlists:', error);
-      set({ error: error.message, loading: false });
-      throw error;
-    }
+    console.warn('Playlist feature not yet migrated to Supabase');
+    set({ playlists: [], loading: false });
+    return [];
   },
 
-  // Subscribe to user's playlists (real-time updates)
+  // Subscribe to user's playlists (TODO: Migrate to Supabase)
   subscribeToUserPlaylists: (userId) => {
-    const playlistsQuery = query(
-      collection(db, 'playlists'),
-      where('userId', '==', userId),
-      orderBy('updatedAt', 'desc')
-    );
-
-    return onSnapshot(playlistsQuery, (snapshot) => {
-      const playlists = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      set({ playlists, loading: false });
-    }, (error) => {
-      console.error('Error in playlist subscription:', error);
-      set({ error: error.message, loading: false });
-    });
+    console.warn('Playlist feature not yet migrated to Supabase');
+    return () => {}; // Return empty unsubscribe function
   },
 
   // Get playlist by ID

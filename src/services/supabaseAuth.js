@@ -49,6 +49,28 @@ export const signIn = async (email, password) => {
   }
 };
 
+// Sign in with Google OAuth
+export const signInWithGoogle = async () => {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
+      }
+    });
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Google sign in error:', error);
+    throw error;
+  }
+};
+
 // Sign out
 export const signOut = async () => {
   try {
@@ -57,7 +79,7 @@ export const signOut = async () => {
   } catch (error) {
     console.error('Sign out error:', error);
     throw error;
-  }
+  }perbai
 };
 
 // Get current user
@@ -74,9 +96,14 @@ export const getSession = async () => {
 
 // Listen to auth state changes
 export const onAuthStateChange = (callback) => {
-  return supabase.auth.onAuthStateChanged((event, session) => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
     callback(session?.user || null);
   });
+  
+  // Return unsubscribe function
+  return () => {
+    subscription.unsubscribe();
+  };
 };
 
 // Reset password
