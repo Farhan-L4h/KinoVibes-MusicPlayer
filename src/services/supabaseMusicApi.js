@@ -73,11 +73,38 @@ export const uploadMusic = async (audioFile, albumArtFile, lyricsFile, metadata,
     if (error) throw error;
     
     console.log('✅ Music uploaded successfully!', data);
-    return data;
+    return transformMusicData(data);
   } catch (error) {
     console.error('❌ Error uploading music:', error);
     throw error;
   }
+};
+
+// Transform database row to app format
+const transformMusicData = (dbRow) => {
+  if (!dbRow) return null;
+  return {
+    id: dbRow.id,
+    userId: dbRow.user_id,
+    title: dbRow.title,
+    artist: dbRow.artist,
+    album: dbRow.album,
+    albumId: dbRow.album_id,
+    genre: dbRow.genre,
+    duration: dbRow.duration,
+    audioUrl: dbRow.audio_url, // Transform to camelCase
+    audioPath: dbRow.audio_path,
+    albumArt: dbRow.album_art, // Transform to camelCase
+    albumArtPath: dbRow.album_art_path,
+    lyricsUrl: dbRow.lyrics_url,
+    lyricsPath: dbRow.lyrics_path,
+    fileName: dbRow.file_name,
+    fileSize: dbRow.file_size,
+    source: dbRow.source,
+    isFullTrack: dbRow.is_full_track,
+    createdAt: dbRow.created_at,
+    updatedAt: dbRow.updated_at
+  };
 };
 
 // Get all music from library
@@ -89,7 +116,7 @@ export const getAllMusic = async () => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map(transformMusicData);
   } catch (error) {
     console.error('Error getting music library:', error);
     return [];
@@ -106,7 +133,7 @@ export const getUserMusic = async (userId) => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map(transformMusicData);
   } catch (error) {
     console.error('Error getting user music:', error);
     return [];
@@ -127,7 +154,7 @@ export const searchMusic = async (searchTerm, limit = 20) => {
       .limit(limit);
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map(transformMusicData);
   } catch (error) {
     console.error('Error searching music:', error);
     return [];
@@ -144,7 +171,7 @@ export const getMusicByGenre = async (genre) => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map(transformMusicData);
   } catch (error) {
     console.error('Error getting music by genre:', error);
     return [];
@@ -161,7 +188,7 @@ export const getArtistTopTracks = async (artistName) => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map(transformMusicData);
   } catch (error) {
     console.error('Error getting artist tracks:', error);
     return [];
@@ -178,7 +205,7 @@ export const getTrendingMusic = async (limit = 15) => {
       .limit(limit);
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map(transformMusicData);
   } catch (error) {
     console.error('Error getting trending music:', error);
     return [];
@@ -231,7 +258,7 @@ export const updateMusic = async (musicId, updates) => {
     if (error) throw error;
     
     console.log('✅ Music updated successfully');
-    return data;
+    return transformMusicData(data);
   } catch (error) {
     console.error('Error updating music:', error);
     throw error;
@@ -248,7 +275,7 @@ export const getMusicById = async (musicId) => {
       .single();
 
     if (error) throw error;
-    return data;
+    return transformMusicData(data);
   } catch (error) {
     console.error('Error getting music:', error);
     return null;
