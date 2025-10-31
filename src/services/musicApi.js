@@ -25,7 +25,7 @@ const DEMO_MUSIC_PATH = '/music/demo/';
 const API_BASE_URL = 'http://localhost:3001';
 
 // Save music file to local project folder and metadata to Firestore
-export const uploadMusic = async (audioFile, albumArtFile, metadata, userId) => {
+export const uploadMusic = async (audioFile, albumArtFile, lyricsFile, metadata, userId) => {
   try {
     if (!audioFile) throw new Error('Audio file is required');
     
@@ -36,10 +36,14 @@ export const uploadMusic = async (audioFile, albumArtFile, metadata, userId) => 
     const albumArtFileName = albumArtFile 
       ? `${userId}_${timestamp}_${albumArtFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}` 
       : null;
+    const lyricsFileName = lyricsFile
+      ? `${userId}_${timestamp}_${lyricsFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+      : null;
     
     // Construct local file paths (relative to public folder)
     const audioPath = `${MUSIC_BASE_PATH}${audioFileName}`;
     const albumArtPath = albumArtFile ? `${ALBUM_ART_BASE_PATH}${albumArtFileName}` : null;
+    const lyricsPath = lyricsFile ? `/lyrics/${lyricsFileName}` : null;
     
     console.log('📤 Uploading files to backend API...');
     
@@ -51,6 +55,11 @@ export const uploadMusic = async (audioFile, albumArtFile, metadata, userId) => 
     if (albumArtFile) {
       formData.append('albumArt', albumArtFile);
       formData.append('albumArtFileName', albumArtFileName);
+    }
+    
+    if (lyricsFile) {
+      formData.append('lyrics', lyricsFile);
+      formData.append('lyricsFileName', lyricsFileName);
     }
     
     // Upload to backend
@@ -79,6 +88,7 @@ export const uploadMusic = async (audioFile, albumArtFile, metadata, userId) => 
       duration: metadata.duration || 0,
       audioUrl: audioPath, // Local path instead of Firebase URL
       albumArt: albumArtPath,
+      lyricsUrl: lyricsPath,
       uploadedBy: userId,
       uploadedAt: new Date(),
       fileName: audioFileName,
@@ -197,10 +207,10 @@ export const getArtistTopTracks = async (artistName) => {
 };
 
 // Delete music metadata from Firestore and files from server
-export const deleteMusic = async (firestoreId, audioUrl, albumArtUrl) => {
+export const deleteMusic = async (firestoreId, audioUrl, albumArtUrl, lyricsUrl) => {
   try {
     // Delete files from backend
-    if (audioUrl || albumArtUrl) {
+    if (audioUrl || albumArtUrl || lyricsUrl) {
       try {
         const deleteResponse = await fetch(`${API_BASE_URL}/api/files`, {
           method: 'DELETE',
@@ -209,7 +219,8 @@ export const deleteMusic = async (firestoreId, audioUrl, albumArtUrl) => {
           },
           body: JSON.stringify({
             audioPath: audioUrl,
-            albumArtPath: albumArtUrl
+            albumArtPath: albumArtUrl,
+            lyricsPath: lyricsUrl
           })
         });
         

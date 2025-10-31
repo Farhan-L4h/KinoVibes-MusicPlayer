@@ -130,6 +130,8 @@ export const useMusicStore = create((set, get) => ({
     }
   },
   
+  seek: (time) => get().seekTo(time), // Alias for compatibility
+  
   updateTime: (time) => set({ currentTime: time }),
   
   setLyrics: (lyrics) => set({ lyrics }),

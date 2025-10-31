@@ -18,12 +18,16 @@ app.use(express.json());
 // Ensure upload directories exist
 const uploadsDir = path.join(__dirname, '../public/music/uploads');
 const albumArtDir = path.join(__dirname, '../public/album-art');
+const lyricsDir = path.join(__dirname, '../public/lyrics');
 
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 if (!fs.existsSync(albumArtDir)) {
   fs.mkdirSync(albumArtDir, { recursive: true });
+}
+if (!fs.existsSync(lyricsDir)) {
+  fs.mkdirSync(lyricsDir, { recursive: true });
 }
 
 // Configure multer for file uploads
@@ -33,6 +37,8 @@ const storage = multer.diskStorage({
       cb(null, uploadsDir);
     } else if (file.fieldname === 'albumArt') {
       cb(null, albumArtDir);
+    } else if (file.fieldname === 'lyrics') {
+      cb(null, lyricsDir);
     }
   },
   filename: (req, file, cb) => {
@@ -69,6 +75,16 @@ const upload = multer({
       } else {
         cb(new Error('Only image files are allowed!'));
       }
+    } else if (file.fieldname === 'lyrics') {
+      // Allow lyrics files (.lrc, .txt, .json)
+      const allowedLyricsTypes = /lrc|txt|json/;
+      const extname = allowedLyricsTypes.test(path.extname(file.originalname).toLowerCase());
+      
+      if (extname) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only .lrc, .txt, or .json files are allowed for lyrics!'));
+      }
     } else {
       cb(new Error('Invalid field name!'));
     }
@@ -78,7 +94,8 @@ const upload = multer({
 // Upload endpoint
 app.post('/api/upload', upload.fields([
   { name: 'audio', maxCount: 1 },
-  { name: 'albumArt', maxCount: 1 }
+  { name: 'albumArt', maxCount: 1 },
+  { name: 'lyrics', maxCount: 1 }
 ]), (req, res) => {
   try {
     console.log('📤 Upload request received');
@@ -125,6 +142,23 @@ app.post('/api/upload', upload.fields([
       console.log('✅ Album art saved:', desiredFilename);
     }
 
+    // Rename lyrics file to the desired filename from client
+    if (req.files.lyrics) {
+      const tempPath = req.files.lyrics[0].path;
+      const desiredFilename = req.body.lyricsFileName || req.files.lyrics[0].filename;
+      const finalPath = path.join(lyricsDir, desiredFilename);
+      
+      // Rename file from temp name to desired name
+      fs.renameSync(tempPath, finalPath);
+      
+      response.files.lyrics = {
+        filename: desiredFilename,
+        path: `/lyrics/${desiredFilename}`,
+        size: req.files.lyrics[0].size
+      };
+      console.log('✅ Lyrics file saved:', desiredFilename);
+    }
+
     res.json(response);
   } catch (error) {
     console.error('❌ Upload error:', error);
@@ -139,7 +173,7 @@ app.post('/api/upload', upload.fields([
 // Delete file endpoint
 app.delete('/api/files', (req, res) => {
   try {
-    const { audioPath, albumArtPath } = req.body;
+    const { audioPath, albumArtPath, lyricsPath } = req.body;
 
     if (audioPath) {
       const fullPath = path.join(__dirname, '../public', audioPath);
@@ -154,6 +188,14 @@ app.delete('/api/files', (req, res) => {
       if (fs.existsSync(fullPath)) {
         fs.unlinkSync(fullPath);
         console.log('🗑️ Deleted album art:', albumArtPath);
+      }
+    }
+
+    if (lyricsPath) {
+      const fullPath = path.join(__dirname, '../public', lyricsPath);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+        console.log('🗑️ Deleted lyrics file:', lyricsPath);
       }
     }
 
@@ -187,9 +229,10 @@ app.listen(PORT, () => {
   console.log(`📡 Server running on http://localhost:${PORT}`);
   console.log(`📁 Upload directory: ${uploadsDir}`);
   console.log(`🖼️  Album art directory: ${albumArtDir}`);
+  console.log(`📝 Lyrics directory: ${lyricsDir}`);
   console.log('================================');
   console.log('Available endpoints:');
-  console.log(`  POST   /api/upload    - Upload music files`);
+  console.log(`  POST   /api/upload    - Upload music files (audio, album art, lyrics)`);
   console.log(`  DELETE /api/files     - Delete music files`);
   console.log(`  GET    /api/health    - Health check`);
   console.log('================================\n');

@@ -16,6 +16,7 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
   
   const [audioFile, setAudioFile] = useState(null);
   const [albumArtFile, setAlbumArtFile] = useState(null);
+  const [lyricsFile, setLyricsFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
@@ -111,6 +112,30 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
     }
   };
 
+  // Handle lyrics file selection
+  const handleLyricsFileChange = (e) => {
+    const file = e.target.files[0];
+    setError('');
+    
+    if (file) {
+      // Validate file type (.lrc, .txt, .json)
+      const validTypes = ['lrc', 'txt', 'json'];
+      const extension = file.name.split('.').pop().toLowerCase();
+      
+      if (!validTypes.includes(extension)) {
+        setError('Please select a valid lyrics file (.lrc, .txt, or .json)');
+        return;
+      }
+      
+      if (file.size > 1 * 1024 * 1024) { // 1MB limit for lyrics
+        setError('Lyrics file is too large. Maximum size is 1MB.');
+        return;
+      }
+      
+      setLyricsFile(file);
+    }
+  };
+
   // Handle album selection
   const handleAlbumChange = (e) => {
     const value = e.target.value;
@@ -194,6 +219,7 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
       const result = await uploadMusic(
         audioFile,
         albumArtFile,
+        lyricsFile,
         {
           title: formData.title.trim(),
           artist: formData.artist.trim(),
@@ -349,6 +375,44 @@ const MusicUpload = ({ onUploadSuccess, onClose }) => {
               <button
                 type="button"
                 onClick={removeAlbumArt}
+                className="text-red-400 hover:text-red-300 transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Lyrics File Upload */}
+        <div>
+          <label className="block text-sm font-medium text-white mb-2">
+            <Music className="w-4 h-4 inline mr-1" />
+            Lyrics File (Optional)
+          </label>
+          {!lyricsFile ? (
+            <div className="border-2 border-dashed border-gray-600 rounded-lg p-4 text-center hover:border-white transition-colors bg-black bg-opacity-30">
+              <input
+                type="file"
+                accept=".lrc,.txt,.json"
+                onChange={handleLyricsFileChange}
+                className="hidden"
+                id="lyrics-upload"
+              />
+              <label htmlFor="lyrics-upload" className="cursor-pointer">
+                <Upload className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                <p className="text-xs text-gray-400">Click to select lyrics file</p>
+                <p className="text-xs text-gray-500 mt-1">.lrc, .txt, or .json (max 1MB)</p>
+              </label>
+            </div>
+          ) : (
+            <div className="bg-black bg-opacity-30 rounded-lg p-3 flex items-center justify-between border border-gray-600">
+              <div className="flex items-center">
+                <Music className="w-4 h-4 text-white mr-2" />
+                <p className="text-sm text-white">{lyricsFile.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLyricsFile(null)}
                 className="text-red-400 hover:text-red-300 transition-colors"
               >
                 <X className="w-3 h-3" />

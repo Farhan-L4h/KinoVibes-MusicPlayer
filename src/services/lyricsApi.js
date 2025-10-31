@@ -167,15 +167,101 @@ export const fetchLyricsFromGenius = async (artist, title) => {
   }
 };
 
+// Parse LRC format lyrics
+const parseLRCLyrics = (lrcContent) => {
+  const lines = lrcContent.split('\n');
+  const lyrics = [];
+  const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
+  
+  lines.forEach(line => {
+    const matches = [...line.matchAll(timeRegex)];
+    if (matches.length > 0) {
+      const text = line.replace(timeRegex, '').trim();
+      matches.forEach(match => {
+        const minutes = parseInt(match[1]);
+        const seconds = parseInt(match[2]);
+        const milliseconds = parseInt(match[3].padEnd(3, '0'));
+        const time = minutes * 60 + seconds + milliseconds / 1000;
+        lyrics.push({ time, text });
+      });
+    }
+  });
+  
+  return lyrics.sort((a, b) => a.time - b.time);
+};
+
+// Parse plain text lyrics
+const parsePlainTextLyrics = (textContent) => {
+  const lines = textContent.split('\n');
+  const lyrics = [];
+  let currentTime = 0;
+  
+  lines.forEach(line => {
+    const text = line.trim();
+    lyrics.push({ time: currentTime, text });
+    currentTime += 5; // 5 seconds per line for plain text
+  });
+  
+  return lyrics;
+};
+
 // Fetch synchronized lyrics from local files or demo
-export const fetchSynchronizedLyrics = async (songId) => {
+export const fetchSynchronizedLyrics = async (songId, artist, title, lyricsUrl) => {
   try {
-    // Try to load lyrics from local file first
+    console.log('🎤 Loading lyrics...', { songId, artist, title, lyricsUrl });
+    
+    // Priority 1: Load from uploaded lyrics file (lyricsUrl from metadata)
+    if (lyricsUrl) {
+      try {
+        console.log('📝 Trying to load from:', lyricsUrl);
+        const response = await fetch(lyricsUrl);
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          const fileExtension = lyricsUrl.split('.').pop().toLowerCase();
+          
+          if (fileExtension === 'json' || contentType?.includes('application/json')) {
+            // JSON format
+            const lyricsData = await response.json();
+            console.log('✅ Loaded JSON lyrics');
+            return {
+              lyrics: lyricsData.lyrics || lyricsData.lines || [],
+              synchronized: true,
+              source: 'uploaded'
+            };
+          } else if (fileExtension === 'lrc') {
+            // LRC format
+            const lrcContent = await response.text();
+            const parsedLyrics = parseLRCLyrics(lrcContent);
+            console.log('✅ Loaded LRC lyrics:', parsedLyrics.length, 'lines');
+            return {
+              lyrics: parsedLyrics,
+              synchronized: true,
+              source: 'uploaded'
+            };
+          } else {
+            // Plain text format
+            const textContent = await response.text();
+            const parsedLyrics = parsePlainTextLyrics(textContent);
+            console.log('✅ Loaded plain text lyrics:', parsedLyrics.length, 'lines');
+            return {
+              lyrics: parsedLyrics,
+              synchronized: false,
+              source: 'uploaded'
+            };
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not load uploaded lyrics:', error.message);
+      }
+    }
+    
+    // Priority 2: Try to load lyrics from local file by songId
     const localLyricsPath = `${LYRICS_BASE_PATH}${songId}.json`;
     try {
       const response = await fetch(localLyricsPath);
       if (response.ok) {
         const lyricsData = await response.json();
+        console.log('✅ Loaded local lyrics file');
         return {
           lyrics: lyricsData.lyrics,
           synchronized: true,
@@ -183,11 +269,12 @@ export const fetchSynchronizedLyrics = async (songId) => {
         };
       }
     } catch {
-      console.log('No local lyrics file found, checking demo data...');
+      console.log('No local lyrics file found for songId:', songId);
     }
     
-    // Check if we have demo lyrics
+    // Priority 3: Check if we have demo lyrics
     if (demoLyrics[songId]) {
+      console.log('✅ Using demo lyrics');
       return {
         lyrics: demoLyrics[songId].lyrics,
         synchronized: true,
