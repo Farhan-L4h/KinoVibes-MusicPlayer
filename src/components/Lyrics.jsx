@@ -107,12 +107,12 @@ const Lyrics = () => {
   }
 
   return (
-    <div className="h-full w-full bg-black overflow-hidden">
-      <div className="h-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-6 p-6">
-        {/* Left Side - Album Art Card (Sticky) */}
-        <div className="hidden lg:block lg:w-96 flex-shrink-0">
-          <div className="sticky top-6">
-            <div className="bg-gray-900 rounded-lg overflow-hidden shadow-xl border border-gray-800">
+    <div className="h-full w-full bg-black">
+      <div className="h-full flex flex-col lg:flex-row overflow-hidden">
+        {/* Left Side - Album Art (Sticky) */}
+        <div className="hidden lg:flex lg:w-[400px] xl:w-[480px] flex-shrink-0 items-start justify-center p-8 border-r border-gray-800">
+          <div className="sticky top-8 w-full">
+            <div className="bg-gray-900 rounded-2xl overflow-hidden shadow-2xl">
               {/* Album Cover */}
               <div className="relative aspect-square">
                 {currentSong.albumArt ? (
@@ -130,9 +130,9 @@ const Lyrics = () => {
               
               {/* Song Info */}
               <div className="p-6">
-                <h2 className="text-xl font-bold text-white mb-2 line-clamp-2">{currentSong.title}</h2>
-                <p className="text-gray-400 text-sm">{currentSong.artist}</p>
-                <p className="text-gray-500 text-xs mt-1">{currentSong.album}</p>
+                <h2 className="text-2xl font-bold text-white mb-2 line-clamp-2">{currentSong.title}</h2>
+                <p className="text-gray-400">{currentSong.artist}</p>
+                <p className="text-gray-500 text-sm mt-1">{currentSong.album}</p>
                 
                 {/* Status Indicator */}
                 <div className="mt-4 flex items-center gap-2">
@@ -143,10 +143,10 @@ const Lyrics = () => {
                         <div className="w-1 h-4 bg-green-500 animate-pulse animation-delay-1000"></div>
                         <div className="w-1 h-4 bg-green-500 animate-pulse animation-delay-2000"></div>
                       </div>
-                      <span className="text-green-500 text-xs font-medium">Now playing</span>
+                      <span className="text-green-500 text-sm font-medium">Now playing</span>
                     </>
                   ) : (
-                    <span className="text-gray-500 text-xs">Paused</span>
+                    <span className="text-gray-500 text-sm">Paused</span>
                   )}
                 </div>
               </div>
@@ -154,38 +154,36 @@ const Lyrics = () => {
           </div>
         </div>
 
-        {/* Center - Lyrics Card (Scrollable) */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-0">
+        {/* Center - Lyrics (Full Width) */}
+        <div className="flex-1 flex flex-col overflow-hidden">
           {/* Mobile Header */}
-          <div className="lg:hidden mb-4 flex-shrink-0">
-            <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-800 flex-shrink-0">
-                  {currentSong.albumArt ? (
-                    <img src={currentSong.albumArt} alt={currentSong.album} className="w-full h-full object-cover" />
-                  ) : (
-                    <Music className="w-6 h-6 text-gray-400 m-auto mt-3" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-semibold text-white truncate">{currentSong.title}</h3>
-                  <p className="text-xs text-gray-400 truncate">{currentSong.artist}</p>
-                </div>
+          <div className="lg:hidden p-4 border-b border-gray-800">
+            <div className="flex items-center space-x-3">
+              <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
+                {currentSong.albumArt ? (
+                  <img src={currentSong.albumArt} alt={currentSong.album} className="w-full h-full object-cover" />
+                ) : (
+                  <Music className="w-6 h-6 text-gray-400 m-auto mt-4" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-white truncate">{currentSong.title}</h3>
+                <p className="text-sm text-gray-400 truncate">{currentSong.artist}</p>
               </div>
             </div>
           </div>
 
-          {/* Lyrics Card */}
-          <div className="flex-1 bg-gray-900 rounded-lg border border-gray-800 overflow-hidden flex flex-col min-h-0">
-            {/* Lyrics Header */}
-            <div className="px-6 py-4 border-b border-gray-800 flex-shrink-0">
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Lyrics</h3>
-            </div>
+          {/* Lyrics Header - Fixed */}
+          <div className="px-8 lg:px-12 xl:px-16 py-6 border-b border-gray-800">
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Lyrics</h3>
+          </div>
 
-            {/* Lyrics Content - Scrollable */}
+          {/* Lyrics Content Wrapper */}
+          <div className="flex-1 overflow-hidden relative">
+
             <div 
               ref={lyricsContainerRef}
-              className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent min-h-0"
+              className="absolute inset-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent"
               onScroll={handleScroll}
               style={{ scrollBehavior: 'smooth' }}
             >
@@ -205,9 +203,9 @@ const Lyrics = () => {
               )}
 
               {!loading && !error && lyrics.length > 0 && (
-                <div className="px-6 py-8">
+                <div className="max-w-4xl mx-auto px-8 lg:px-12 xl:px-16 py-8">
                   {/* Top padding */}
-                  <div className="h-32"></div>
+                  <div className="h-24"></div>
                   
                   {lyrics.map((line, index) => {
                     const isCurrent = currentLyricData?.current === line;
@@ -219,15 +217,15 @@ const Lyrics = () => {
                         key={index}
                         ref={isCurrent ? currentLineRef : null}
                         onClick={() => handleLyricClick(line.time)}
-                        className={`transition-all duration-200 cursor-pointer py-3 px-2 rounded ${
+                        className={`transition-all duration-200 cursor-pointer py-2 mb-2 ${
                           isCurrent
-                            ? 'text-white text-3xl lg:text-4xl font-bold'
+                            ? 'text-white text-4xl lg:text-5xl xl:text-6xl font-bold'
                             : isPast
-                            ? 'text-gray-600 text-base lg:text-lg hover:text-gray-500'
-                            : 'text-gray-600 text-base lg:text-lg hover:text-gray-500'
+                            ? 'text-gray-600 text-xl lg:text-2xl hover:text-gray-500'
+                            : 'text-gray-600 text-xl lg:text-2xl hover:text-gray-500'
                         }`}
                         style={{
-                          lineHeight: '1.6',
+                          lineHeight: '1.4',
                         }}
                       >
                         {line.text || '\u00A0'}
@@ -249,19 +247,6 @@ const Lyrics = () => {
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side - Up Next Card (Hidden on mobile, Sticky) */}
-        <div className="hidden xl:block xl:w-80 flex-shrink-0">
-          <div className="sticky top-6">
-            <div className="bg-gray-900 rounded-lg border border-gray-800 p-6">
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Up Next</h3>
-              <div className="text-center text-gray-600 py-12">
-                <Music className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">Queue is empty</p>
-              </div>
             </div>
           </div>
         </div>
