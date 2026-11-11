@@ -1,62 +1,54 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAuthStore } from './stores/auth';
-
-// Components
-import Layout from './components/Layout';
+import './hooks/useTheme';
 import PrivateRoute from './components/PrivateRoute';
-import MusicPlayer from './components/MusicPlayer';
-import PageTransition from './components/PageTransition';
-
-// Pages
-import Home from './pages/HomeYT'; // New YouTube Music style
+import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Home from './pages/Home';
 import Search from './pages/Search';
 import Library from './pages/Library';
+import LyricsPage from './pages/LyricsPage';
 import Playlists from './pages/Playlists';
 import PlaylistDetail from './pages/PlaylistDetail';
 import Favorites from './pages/Favorites';
 import Upload from './pages/Upload';
 import Profile from './pages/Profile';
-import LyricsPage from './pages/LyricsPageYT'; // New YouTube Music style lyrics
+import NotFound from './pages/NotFound';
 
-// Styles
-import './App.css';
-
-function App() {
-  const { initializeAuth, isAuthenticated } = useAuthStore();
-
+const App = () => {
   useEffect(() => {
-    // Initialize auth state listener
-    const unsubscribe = initializeAuth();
-    
-    // Cleanup on unmount
-    return () => unsubscribe && unsubscribe();
-  }, [initializeAuth]);
+    const unsubscribe = useAuthStore.getState().initializeAuth();
+    return unsubscribe;
+  }, []);
 
   return (
-    <Router>
-      <div className="w-full h-screen bg-black overflow-hidden">
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          {/* Protected routes */}
-          <Route path="/" element={<PrivateRoute><Layout><PageTransition><Home /></PageTransition></Layout></PrivateRoute>} />
-          <Route path="/search" element={<PrivateRoute><Layout><PageTransition><Search /></PageTransition></Layout></PrivateRoute>} />
-          <Route path="/library" element={<PrivateRoute><Layout><PageTransition><Library /></PageTransition></Layout></PrivateRoute>} />
-          <Route path="/lyrics" element={<PrivateRoute><Layout><PageTransition><LyricsPage /></PageTransition></Layout></PrivateRoute>} />
-          <Route path="/playlists" element={<PrivateRoute><Layout><PageTransition><Playlists /></PageTransition></Layout></PrivateRoute>} />
-          <Route path="/playlists/:id" element={<PrivateRoute><Layout><PageTransition><PlaylistDetail /></PageTransition></Layout></PrivateRoute>} />
-          <Route path="/favorites" element={<PrivateRoute><Layout><PageTransition><Favorites /></PageTransition></Layout></PrivateRoute>} />
-          <Route path="/upload" element={<PrivateRoute><Layout><PageTransition><Upload /></PageTransition></Layout></PrivateRoute>} />
-          <Route path="/profile" element={<PrivateRoute><Layout><PageTransition><Profile /></PageTransition></Layout></PrivateRoute>} />
-        </Routes>
-      </div>
-    </Router>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route
+          element={
+            <PrivateRoute>
+              <Layout />
+            </PrivateRoute>
+          }
+        >
+          <Route path="/" element={<Home />} />
+          <Route path="/search" element={<Search />} />
+          <Route path="/library" element={<Library />} />
+          <Route path="/lyrics" element={<LyricsPage />} />
+          <Route path="/playlists" element={<Playlists />} />
+          <Route path="/playlists/:id" element={<PlaylistDetail />} />
+          <Route path="/favorites" element={<Favorites />} />
+          <Route path="/upload" element={<Upload />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
-}
+};
 
 export default App;

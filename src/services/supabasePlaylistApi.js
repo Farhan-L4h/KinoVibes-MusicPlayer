@@ -33,12 +33,15 @@ export const getUserPlaylists = async (userId) => {
   try {
     const { data, error } = await supabase
       .from('playlists')
-      .select('*')
+      .select('*, playlist_tracks(count)')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map(row => ({
+      ...row,
+      trackCount: row.playlist_tracks?.[0]?.count ?? row.track_count ?? 0
+    }));
   } catch (error) {
     console.error('Error getting playlists:', error);
     return [];

@@ -1,48 +1,247 @@
-import React from 'react';
-import { User } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  User,
+  LogOut,
+  KeyRound,
+  Loader2,
+  Save,
+  Sun,
+  Moon,
+  Monitor,
+  Music2,
+  Heart,
+  ListMusic,
+  Keyboard,
+} from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
-import SplitText from '../components/SplitText';
-import FadeInView from '../components/FadeInView';
+import { useFavoritesStore } from '../stores/favorites';
+import { usePlaylistStore } from '../stores/playlist';
+import { useMusicStore } from '../stores/music';
+import { useThemeStore } from '../hooks/useTheme';
+import { updateProfile, updatePassword, signOut } from '../services/supabaseAuth';
+import { getUserMusic } from '../services/supabaseMusicApi';
+import { initials, cn } from '../lib/utils';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import Badge from '../components/ui/Badge';
+import { toast } from '../stores/toast';
+
+const SHORTCUTS = [
+  ['Spasi', 'Putar / jeda'],
+  ['← / →', 'Mundur / maju 5 detik'],
+  ['Shift + ← / →', 'Lagu sebelumnya / berikutnya'],
+  ['M', 'Bisukan / bunyikan'],
+  ['L', 'Buka lirik'],
+  ['/', 'Buka pencarian'],
+];
+
+const THEMES = [
+  { value: 'light', label: 'Terang', icon: Sun },
+  { value: 'dark', label: 'Gelap', icon: Moon },
+  { value: 'system', label: 'Sistem', icon: Monitor },
+];
 
 const Profile = () => {
-  const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+  const favCount = useFavoritesStore((s) => s.tracks.length);
+  const playlistCount = usePlaylistStore((s) => s.playlists.length);
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
+
+  const [uploadCount, setUploadCount] = useState(0);
+  const [name, setName] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  const displayName =
+    user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kamu';
+
+  useEffect(() => {
+    setName(displayName);
+  }, [displayName]);
+
+  useEffect(() => {
+    if (!user) return;
+    getUserMusic(user.id)
+      .then((list) => setUploadCount(list.length))
+      .catch(() => {});
+  }, [user?.id]);
+
+  const handleSaveName = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setSavingName(true);
+    try {
+      await updateProfile({ display_name: name.trim(), full_name: name.trim() });
+      setUser({
+        ...user,
+        user_metadata: { ...user.user_metadata, display_name: name.trim(), full_name: name.trim() },
+      });
+      toast.success('Nama diperbarui');
+    } catch (err) {
+      toast.error(err.message || 'Gagal memperbarui nama');
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const handlePassword = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      toast.error('Kata sandi minimal 6 karakter.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Konfirmasi kata sandi tidak cocok.');
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await updatePassword(newPassword);
+      toast.success('Kata sandi diganti');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      toast.error(err.message || 'Gagal mengganti kata sandi');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      useMusicStore.getState().stopAndClear();
+      useFavoritesStore.getState().clear();
+      usePlaylistStore.getState().clearPlaylists();
+      await signOut();
+      navigate('/login');
+    } catch {
+      toast.error('Gagal keluar. Coba lagi.');
+    }
+  };
+
+  const joined = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <SplitText className="text-3xl font-bold text-white text-center" delay={0.1}>
-        Profile
-      </SplitText>
-
-      <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-8 animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
-        <div className="flex items-center space-x-6 mb-6">
-          <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center">
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt="Profile" className="w-full h-full rounded-full object-cover" />
-            ) : (
-              <User className="w-10 h-10 text-white" />
-            )}
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-white">{user?.displayName || 'Music Lover'}</h2>
-            <p className="text-gray-300">{user?.email}</p>
-          </div>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <header className="kv-card kv-stripes flex flex-wrap items-center gap-5 p-5 sm:p-6">
+        <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-kv border-3 border-kv-ink bg-kv-blue font-display text-2xl text-[#0a0a0a] shadow-kv-lg">
+          {initials(displayName)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate font-display text-2xl uppercase sm:text-3xl">{displayName}</h1>
+          <p className="truncate text-sm text-kv-ink-muted">{user?.email}</p>
+          {joined && (
+            <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-kv-ink-muted">
+              Bergabung {joined}
+            </p>
+          )}
         </div>
+        <Button variant="danger" size="sm" onClick={handleLogout}>
+          <LogOut size={15} /> Keluar
+        </Button>
+      </header>
 
-        <FadeInView className="grid grid-cols-1 md:grid-cols-3 gap-6" delay={0.8} stagger={0.15}>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-white">0</p>
-            <p className="text-gray-300">Playlists Created</p>
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { icon: Music2, label: 'Lagu upload', value: uploadCount, tone: 'bg-kv-yellow' },
+          { icon: Heart, label: 'Favorit', value: favCount, tone: 'bg-kv-pink' },
+          { icon: ListMusic, label: 'Playlist', value: playlistCount, tone: 'bg-kv-green' },
+        ].map(({ icon: Icon, label, value, tone }) => (
+          <div key={label} className="kv-card p-3 text-center sm:p-4">
+            <span className={`mx-auto flex h-10 w-10 items-center justify-center rounded-kv border-3 border-kv-ink ${tone} shadow-kv`}>
+              <Icon size={18} className="text-[#0a0a0a]" />
+            </span>
+            <p className="mt-2 font-display text-2xl">{value}</p>
+            <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-kv-ink-muted">{label}</p>
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-white">0</p>
-            <p className="text-gray-300">Songs Uploaded</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-white">0</p>
-            <p className="text-gray-300">Favorites</p>
-          </div>
-        </FadeInView>
+        ))}
       </div>
+
+      <section className="kv-card p-4 sm:p-5">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-lg uppercase">
+          <User size={18} /> Nama tampilan
+        </h2>
+        <form onSubmit={handleSaveName} className="flex items-end gap-2">
+          <Input label="Nama" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
+          <Button type="submit" size="md" disabled={savingName || !name.trim()} className="shrink-0">
+            {savingName ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            Simpan
+          </Button>
+        </form>
+      </section>
+
+      <section className="kv-card p-4 sm:p-5">
+        <h2 className="mb-3 font-display text-lg uppercase">Tema</h2>
+        <div className="grid grid-cols-3 gap-2">
+          {THEMES.map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setTheme(value)}
+              aria-pressed={theme === value}
+              className={cn(
+                'kv-press flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-kv border-3 border-kv-ink px-2 py-2 font-bold shadow-kv',
+                theme === value ? 'bg-kv-yellow text-[#0a0a0a]' : 'bg-kv-surface text-kv-ink'
+              )}
+            >
+              <Icon size={18} />
+              <span className="text-xs">{label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="kv-card p-4 sm:p-5">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-lg uppercase">
+          <KeyRound size={18} /> Ganti kata sandi
+        </h2>
+        <form onSubmit={handlePassword} className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input
+              label="Kata sandi baru"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              placeholder="Minimal 6 karakter"
+            />
+            <Input
+              label="Ulangi"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              placeholder="Ketik ulang"
+            />
+          </div>
+          <Button type="submit" size="sm" disabled={savingPassword || !newPassword}>
+            {savingPassword ? <Loader2 size={15} className="animate-spin" /> : <KeyRound size={15} />}
+            Ganti sandi
+          </Button>
+        </form>
+      </section>
+
+      <section className="kv-card p-4 sm:p-5">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-lg uppercase">
+          <Keyboard size={18} /> Pintasan keyboard
+        </h2>
+        <ul className="space-y-2">
+          {SHORTCUTS.map(([key, desc]) => (
+            <li key={key} className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-kv-ink-muted">{desc}</span>
+              <Badge tone="surface">{key}</Badge>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 };

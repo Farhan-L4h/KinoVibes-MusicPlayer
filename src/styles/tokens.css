@@ -1,0 +1,60 @@
+/* KinoVibe neobrutalism design tokens — cream + yellow, hard shadows, thick borders */
+
+:root {
+  --kv-bg: #fff8e7;
+  --kv-surface: #ffffff;
+  --kv-surface-muted: #fff0c2;
+  --kv-ink: #0a0a0a;
+  --kv-ink-muted: #57534a;
+
+  --kv-yellow: #ffde59;
+  --kv-pink: #ff6b9d;
+  --kv-blue: #4d9fff;
+  --kv-green: #5ce08a;
+  --kv-orange: #ff8a3d;
+  --kv-purple: #b28dff;
+  --kv-red: #ff5c5c;
+  --kv-danger: #d92d20;
+  --kv-danger-ink: #ffffff;
+
+  --kv-accent: var(--kv-yellow);
+
+  --kv-stripe: rgba(10, 10, 10, 0.07);
+  --kv-dot: rgba(10, 10, 10, 0.18);
+
+  --kv-border-width: 3px;
+  --kv-border: var(--kv-border-width) solid var(--kv-ink);
+  --kv-radius: 8px;
+  --kv-radius-lg: 12px;
+  --kv-shadow: 4px 4px 0 var(--kv-ink);
+  --kv-shadow-lg: 8px 8px 0 var(--kv-ink);
+  --kv-shadow-pressed: 0 0 0 var(--kv-ink);
+
+  --kv-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --kv-duration: 120ms;
+
+  --kv-sidebar-w: 264px;
+  --kv-miniplayer-h: 88px;
+  --kv-bottomnav-h: 64px;
+}
+
+.dark {
+  --kv-bg: #141210;
+  --kv-surface: #1e1b16;
+  --kv-surface-muted: #2a2519;
+  --kv-ink: #fff8e7;
+  --kv-ink-muted: #c9c2b2;
+
+  --kv-yellow: #ffde59;
+  --kv-pink: #ff7fae;
+  --kv-blue: #70b3ff;
+  --kv-green: #6cf09a;
+  --kv-orange: #ff9a5c;
+  --kv-purple: #c4a8ff;
+  --kv-red: #ff7a7a;
+  --kv-danger: #ff8178;
+  --kv-danger-ink: #141210;
+
+  --kv-stripe: rgba(255, 248, 231, 0.06);
+  --kv-dot: rgba(255, 248, 231, 0.14);
+}

@@ -1,265 +1,235 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Play, Pause, Trash2, MoreVertical, Clock, Calendar } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  ListMusic,
+  Play,
+  Shuffle,
+  Pencil,
+  Trash2,
+  Loader2,
+  Plus,
+} from 'lucide-react';
 import { usePlaylistStore } from '../stores/playlist';
-import { useMusicStore } from '../stores/music';
-import { useAuthStore } from '../stores/auth';
-import { getPlaylistWithTracks } from '../services/supabasePlaylistApi';
-import LoadingSpinner from '../components/LoadingSpinner';
-import SplitText from '../components/SplitText';
-import FadeInView from '../components/FadeInView';
+import { getPlaylistWithTracks, reorderPlaylistTracks } from '../services/supabasePlaylistApi';
+import { transformMusicData } from '../services/supabaseMusicApi';
+import { useTrackActions } from '../hooks/useTrackActions';
+import { formatTotalDuration } from '../lib/utils';
+import TrackRow from '../components/TrackRow';
+import ConfirmModal from '../components/ConfirmModal';
+import Modal from '../components/ui/Modal';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import Badge from '../components/ui/Badge';
+import EmptyState from '../components/ui/EmptyState';
+import { TrackRowSkeleton } from '../components/ui/Skeleton';
+import { toast } from '../stores/toast';
 
 const PlaylistDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const { currentTrack, isPlaying, playTrack, pauseTrack } = useMusicStore();
-  const { deletePlaylist, removeSongFromPlaylist } = usePlaylistStore();
-  
+  const actions = useTrackActions();
+  const { updatePlaylist, deletePlaylist, removeSongFromPlaylist } = usePlaylistStore();
+
   const [playlist, setPlaylist] = useState(null);
+  const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [deletingTrackId, setDeletingTrackId] = useState(null);
+  const [notFound, setNotFound] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  // Load playlist with tracks
-  useEffect(() => {
-    loadPlaylist();
-  }, [id]);
-
-  const loadPlaylist = async () => {
+  const load = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
       const data = await getPlaylistWithTracks(id);
-      
-      if (!data) {
-        setError('Playlist not found');
-        return;
-      }
-      
       setPlaylist(data);
-    } catch (err) {
-      console.error('Failed to load playlist:', err);
-      setError('Failed to load playlist');
+      setTracks((data.tracks || []).map(transformMusicData).filter(Boolean));
+      setName(data.name || '');
+      setDescription(data.description || '');
+    } catch {
+      setNotFound(true);
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePlayTrack = (track) => {
-    if (currentTrack?.id === track.id && isPlaying) {
-      pauseTrack();
-    } else {
-      playTrack(track);
-    }
-  };
+  useEffect(() => {
+    load();
+  }, [id]);
 
-  const handleRemoveTrack = async (trackId) => {
-    if (!confirm('Remove this song from the playlist?')) return;
-    
+  const move = async (from, to) => {
+    if (to < 0 || to >= tracks.length) return;
+    const next = [...tracks];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    setTracks(next);
     try {
-      setDeletingTrackId(trackId);
-      await removeSongFromPlaylist(id, trackId);
-      // Reload playlist to update UI
-      await loadPlaylist();
-    } catch (err) {
-      console.error('Failed to remove track:', err);
-      alert('Failed to remove track from playlist');
-    } finally {
-      setDeletingTrackId(null);
+      await reorderPlaylistTracks(id, next.map((t) => t.id));
+    } catch {
+      toast.error('Gagal menyimpan urutan. Memuat ulang…');
+      load();
     }
   };
 
-  const handleDeletePlaylist = async () => {
-    if (!confirm(`Delete playlist "${playlist.name}"? This cannot be undone.`)) return;
-    
+  const removeTrack = async (track) => {
+    const prev = tracks;
+    setTracks(tracks.filter((t) => t.id !== track.id));
+    try {
+      await removeSongFromPlaylist(id, track.id);
+      toast.success('Lagu dihapus dari playlist');
+    } catch {
+      setTracks(prev);
+      toast.error('Gagal menghapus lagu dari playlist');
+    }
+  };
+
+  const handleRename = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    try {
+      await updatePlaylist(id, { name: name.trim(), description: description.trim() || null });
+      setPlaylist((p) => ({ ...p, name: name.trim(), description: description.trim() || null }));
+      toast.success('Playlist diperbarui');
+      setRenaming(false);
+    } catch {
+      toast.error('Gagal memperbarui playlist');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = async () => {
     try {
       await deletePlaylist(id);
-      navigate('/');
-    } catch (err) {
-      console.error('Failed to delete playlist:', err);
-      alert('Failed to delete playlist');
+      toast.success('Playlist dihapus');
+      navigate('/playlists');
+    } catch {
+      toast.error('Gagal menghapus playlist');
     }
-  };
-
-  const formatDuration = (seconds) => {
-    if (!seconds) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Unknown';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <LoadingSpinner size="lg" />
+      <div className="mx-auto max-w-5xl space-y-4">
+        <div className="h-8 w-40 animate-pulse rounded-kv border-3 border-kv-ink bg-kv-muted" />
+        <div className="space-y-2">
+          {[...Array(5)].map((_, i) => <TrackRowSkeleton key={i} />)}
+        </div>
       </div>
     );
   }
 
-  if (error || !playlist) {
+  if (notFound || !playlist) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <p className="text-red-400 text-lg mb-4">{error || 'Playlist not found'}</p>
-        <button
-          onClick={() => navigate('/')}
-          className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-        >
-          Go Home
-        </button>
+      <div className="mx-auto max-w-3xl">
+        <EmptyState
+          icon={ListMusic}
+          title="Playlist tidak ditemukan"
+          description="Playlist mungkin sudah dihapus."
+          action={<Button size="sm" onClick={() => navigate('/playlists')}><ArrowLeft size={15} /> Kembali</Button>}
+        />
       </div>
     );
   }
 
-  const tracks = playlist.tracks || [];
-  const totalDuration = tracks.reduce((sum, t) => sum + (t.duration || 0), 0);
+  const totalDuration = tracks.reduce((a, t) => a + (t.duration || 0), 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-      {/* Playlist Header */}
-      <div className="bg-gradient-to-b from-purple-900/40 to-transparent px-8 pt-20 pb-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-end space-x-6">
-            {/* Playlist Cover */}
-            <div className="w-48 h-48 bg-gradient-to-br from-purple-600 to-purple-900 rounded-2xl shadow-2xl flex items-center justify-center flex-shrink-0 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-              <Play className="w-20 h-20 text-white/80" />
-            </div>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <button
+        type="button"
+        onClick={() => navigate('/playlists')}
+        className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-wider text-kv-ink-muted hover:text-kv-ink"
+      >
+        <ArrowLeft size={14} /> Semua playlist
+      </button>
 
-            {/* Playlist Info */}
-            <div className="flex-1 pb-4">
-              <p className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-2 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-                Playlist
-              </p>
-              <SplitText className="text-5xl font-bold mb-4" delay={0.4}>
-                {playlist.name}
-              </SplitText>
-              {playlist.description && (
-                <p className="text-gray-300 mb-4">{playlist.description}</p>
-              )}
-              <div className="flex items-center space-x-4 text-sm text-gray-400">
-                <span>{user?.displayName || 'You'}</span>
-                <span>•</span>
-                <span>{tracks.length} songs</span>
-                {totalDuration > 0 && (
-                  <>
-                    <span>•</span>
-                    <span>{Math.floor(totalDuration / 60)} min</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="pb-4">
-              <button
-                onClick={handleDeletePlaylist}
-                className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Delete</span>
-              </button>
-            </div>
+      <header className="kv-card kv-stripes flex flex-col gap-5 p-5 sm:flex-row sm:items-end sm:p-6">
+        <span className="kv-dots flex h-36 w-36 shrink-0 items-center justify-center rounded-kv border-3 border-kv-ink bg-kv-green shadow-kv-lg sm:h-44 sm:w-44">
+          <ListMusic size={56} className="text-[#0a0a0a]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <Badge tone="purple">Playlist</Badge>
+          <h1 className="mt-2 font-display text-3xl uppercase leading-tight sm:text-4xl">{playlist.name}</h1>
+          {playlist.description && <p className="mt-1 text-sm text-kv-ink-muted">{playlist.description}</p>}
+          <p className="mt-1 font-mono text-xs text-kv-ink-muted">
+            {tracks.length} lagu · {formatTotalDuration(totalDuration)}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => actions.playAll(tracks)} disabled={tracks.length === 0}>
+              <Play size={15} /> Putar semua
+            </Button>
+            <Button size="sm" variant="pink" onClick={() => actions.shuffleAll(tracks)} disabled={tracks.length === 0}>
+              <Shuffle size={15} /> Acak
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setRenaming(true)}>
+              <Pencil size={15} /> Edit
+            </Button>
+            <Button size="sm" variant="danger" onClick={() => setDeleting(true)}>
+              <Trash2 size={15} /> Hapus
+            </Button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Tracks List */}
-      <div className="px-8 py-6">
-        <div className="max-w-7xl mx-auto">
-          {tracks.length === 0 ? (
-            <div className="text-center py-16">
-              <Play className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400 text-lg mb-2">This playlist is empty</p>
-              <p className="text-gray-500 text-sm">Add songs from your library</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {/* Table Header */}
-              <div className="grid grid-cols-[50px_1fr_200px_100px_80px] gap-4 px-4 py-2 text-sm text-gray-400 border-b border-white/10 animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
-                <div className="text-center">#</div>
-                <div>Title</div>
-                <div>Album</div>
-                <div className="flex items-center">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Added
-                </div>
-                <div className="flex items-center justify-end">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Duration
-                </div>
-              </div>
-
-              {/* Tracks */}
-              <FadeInView delay={0.7} stagger={0.05}>
-              {tracks.map((track, index) => (
-                <div
-                  key={track.id}
-                  className="grid grid-cols-[50px_1fr_200px_100px_80px] gap-4 px-4 py-3 rounded-lg hover:bg-white/5 group transition-colors"
-                >
-                  {/* Play Button / Number */}
-                  <div className="flex items-center justify-center">
-                    <button
-                      onClick={() => handlePlayTrack(track)}
-                      className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
-                    >
-                      {currentTrack?.id === track.id && isPlaying ? (
-                        <Pause className="w-4 h-4 text-purple-400" />
-                      ) : (
-                        <Play className="w-4 h-4 text-white group-hover:text-purple-400" />
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Track Info */}
-                  <div className="flex items-center space-x-3 min-w-0">
-                    {track.album_art_url && (
-                      <img
-                        src={track.album_art_url}
-                        alt={track.title}
-                        className="w-10 h-10 rounded object-cover flex-shrink-0"
-                      />
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{track.title}</p>
-                      <p className="text-sm text-gray-400 truncate">{track.artist}</p>
-                    </div>
-                  </div>
-
-                  {/* Album */}
-                  <div className="flex items-center">
-                    <p className="text-sm text-gray-400 truncate">{track.album || 'Unknown'}</p>
-                  </div>
-
-                  {/* Added Date */}
-                  <div className="flex items-center">
-                    <p className="text-sm text-gray-400">{formatDate(track.added_at)}</p>
-                  </div>
-
-                  {/* Duration & Actions */}
-                  <div className="flex items-center justify-end space-x-2">
-                    <span className="text-sm text-gray-400">{formatDuration(track.duration)}</span>
-                    <button
-                      onClick={() => handleRemoveTrack(track.id)}
-                      disabled={deletingTrackId === track.id}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all disabled:opacity-50"
-                      title="Remove from playlist"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              </FadeInView>
-            </div>
-          )}
+      {tracks.length === 0 ? (
+        <EmptyState
+          icon={ListMusic}
+          title="Playlist kosong"
+          description="Tambahkan lagu lewat menu ⋯ pada lagu mana pun — dari library atau hasil pencarian YouTube."
+          action={<Button size="sm" onClick={() => navigate('/search')}><Plus size={15} /> Cari lagu</Button>}
+        />
+      ) : (
+        <div className="space-y-1.5">
+          {tracks.map((t, i) => (
+            <TrackRow
+              key={`${t.id}-${i}`}
+              track={t}
+              index={i}
+              list={tracks}
+              onRemove={() => removeTrack(t)}
+              removeLabel="Hapus dari playlist"
+              onMoveUp={() => move(i, i - 1)}
+              onMoveDown={() => move(i, i + 1)}
+              isFirst={i === 0}
+              isLast={i === tracks.length - 1}
+            />
+          ))}
         </div>
-      </div>
+      )}
+
+      <Modal open={renaming} onClose={() => setRenaming(false)} title="Edit playlist">
+        <form onSubmit={handleRename} className="space-y-4">
+          <Input label="Nama" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required />
+          <Input
+            label="Deskripsi"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={200}
+            placeholder="Opsional"
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setRenaming(false)} disabled={busy}>
+              Batal
+            </Button>
+            <Button type="submit" size="sm" disabled={busy || !name.trim()}>
+              {busy && <Loader2 size={16} className="animate-spin" />} Simpan
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmModal
+        open={deleting}
+        onClose={() => setDeleting(false)}
+        onConfirm={handleDelete}
+        title="Hapus playlist?"
+        message={`Playlist "${playlist.name}" beserta urutan lagunya akan dihapus. Lagu di dalamnya tetap aman di library.`}
+      />
     </div>
   );
 };

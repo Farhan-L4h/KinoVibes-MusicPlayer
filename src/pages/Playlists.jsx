@@ -1,401 +1,125 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Music,
-  Plus,
-  Play,
-  Pause,
-  MoreVertical,
-  Edit,
-  Trash2,
-  Clock,
-  Heart
-} from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ListMusic, Plus, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
 import { usePlaylistStore } from '../stores/playlist';
-import { useMusicStore } from '../stores/music';
-import { supabase } from '../config/supabase';
-import SplitText from '../components/SplitText';
-import FadeInView from '../components/FadeInView';
+import Modal from '../components/ui/Modal';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import EmptyState from '../components/ui/EmptyState';
+import { CardSkeleton } from '../components/ui/Skeleton';
+import { toast } from '../stores/toast';
+
+const ACCENTS = ['bg-kv-pink', 'bg-kv-blue', 'bg-kv-green', 'bg-kv-orange', 'bg-kv-purple', 'bg-kv-yellow'];
 
 const Playlists = () => {
-  const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const { playlists, loading, createPlaylist } = usePlaylistStore();
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const {
-    playlists,
-    loading,
-    error: playlistError, // rename biar gak tabrakan
-    createPlaylist,
-    updatePlaylist,
-    deletePlaylist,
-    loadUserPlaylists,
-    addSongToPlaylist,
-    removeSongFromPlaylist
-  } = usePlaylistStore();
-
-
-  const { currentSong, isPlaying, playSong, togglePlay } = useMusicStore();
-
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
-  const [newPlaylistName, setNewPlaylistName] = useState('');
-  const [newPlaylistDescription, setNewPlaylistDescription] = useState('');
-
-  useEffect(() => {
-    if (user?.id) {
-      loadUserPlaylists(user.id);
-    }
-  }, [user, loadUserPlaylists]);
-
-  async function handleCreatePlaylist(e) {
+  const handleCreate = async (e) => {
     e.preventDefault();
-
-    const { data: auth } = await supabase.auth.getUser();
-    const authedUser = auth?.user;
-    if (!authedUser) {
-      throw new Error('Kamu harus login dulu');
-    }
-
-    const name = newPlaylistName.trim();
-    const description = (newPlaylistDescription || '').trim() || null;
-    if (!name) return;
-
-    const { error: insertError } = await supabase
-      .from('playlists')
-      .insert({
-        name,
-        description,
-        is_public: false,
-        user_id: authedUser.id, // wajib biar lolos RLS
-      });
-
-    if (insertError) throw insertError;
-
-    await loadUserPlaylists(authedUser.id);
-    setShowCreateModal(false);
-    setNewPlaylistName('');
-    setNewPlaylistDescription('');
-  }
-
-
-  const handleEditPlaylist = async (e) => {
-    e.preventDefault();
-    if (!selectedPlaylist || !newPlaylistName.trim()) return;
-
+    if (!name.trim() || !user) return;
+    setBusy(true);
     try {
-      await updatePlaylist(selectedPlaylist.id, {
-        name: newPlaylistName.trim(),
-        description: newPlaylistDescription.trim()
+      const playlist = await createPlaylist(user.id, {
+        name: name.trim(),
+        description: description.trim() || null,
       });
-
-      setShowEditModal(false);
-      setSelectedPlaylist(null);
-      setNewPlaylistName('');
-      setNewPlaylistDescription('');
-    } catch (error) {
-      console.error('Error updating playlist:', error);
+      toast.success(`Playlist "${playlist.name}" dibuat`);
+      setCreating(false);
+      setName('');
+      setDescription('');
+      navigate(`/playlists/${playlist.id}`);
+    } catch {
+      toast.error('Gagal membuat playlist');
+    } finally {
+      setBusy(false);
     }
   };
-
-  const handleDeletePlaylist = async (playlistId) => {
-    if (window.confirm('Are you sure you want to delete this playlist?')) {
-      try {
-        await deletePlaylist(playlistId);
-      } catch (error) {
-        console.error('Error deleting playlist:', error);
-      }
-    }
-  };
-
-  const handlePlayPlaylist = (playlist) => {
-    if (playlist.songs && playlist.songs.length > 0) {
-      playSong(playlist.songs[0], playlist.songs);
-    }
-  };
-
-  const isCurrentSong = (song) => {
-    return currentSong && currentSong.id === song.id;
-  };
-
-  const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
-  const getTotalDuration = (songs) => {
-    const total = songs.reduce((acc, song) => acc + (song.duration || 0), 0);
-    return formatTime(total);
-  };
-
-  const openEditModal = (playlist) => {
-    setSelectedPlaylist(playlist);
-    setNewPlaylistName(playlist.name);
-    setNewPlaylistDescription(playlist.description || '');
-    setShowEditModal(true);
-  };
-
-  if (loading && playlists.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-5xl space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <SplitText className="text-4xl lg:text-5xl font-bold text-white mb-2" delay={0.1}>
-            Your Playlists
-          </SplitText>
-          <p className="text-gray-300 text-lg animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
-            {playlists.length} playlist{playlists.length !== 1 ? 's' : ''}
-          </p>
+          <h1 className="font-display text-3xl uppercase sm:text-4xl">Playlist</h1>
+          <p className="mt-1 text-sm text-kv-ink-muted">Kumpulan lagu untuk setiap suasana.</p>
         </div>
+        <Button onClick={() => setCreating(true)}>
+          <Plus size={17} /> Buat playlist
+        </Button>
+      </header>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="bg-white text-black px-6 py-3 rounded-full hover:scale-105 transition-all duration-200 font-semibold flex items-center space-x-2 animate-fade-in-up"
-          style={{ animationDelay: '0.8s' }}
-        >
-          <Plus className="w-5 h-5" />
-          <span>Create Playlist</span>
-        </button>
-      </div>
-
-      {playlistError && (
-        <div className="bg-red-500/20 border border-red-500/50 text-red-300 rounded-xl p-4">
-          {playlistError}
+      {loading && playlists.length === 0 ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => <CardSkeleton key={i} />)}
         </div>
-      )}
-
-
-      {/* Playlists Grid */}
-      {playlists.length > 0 ? (
-        <FadeInView className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" delay={0.3} stagger={0.1}>
-          {playlists.map((playlist) => (
-            <div
-              key={playlist.id}
-              className="bg-gray-900/50 rounded-2xl p-6 hover:bg-gray-800/50 transition-all duration-300 group"
-            >
-              {/* Playlist Cover */}
-              <div className="relative mb-4">
-                <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-800 flex items-center justify-center">
-                  {playlist.songs && playlist.songs.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-1 w-full h-full p-2">
-                      {playlist.songs.slice(0, 4).map((song, index) => (
-                        <div key={index} className="rounded-lg overflow-hidden bg-gray-700 flex items-center justify-center">
-                          {song.albumArt ? (
-                            <img
-                              src={song.albumArt}
-                              alt={song.album}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <Music className="w-4 h-4 text-gray-400" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <Music className="w-16 h-16 text-gray-400" />
-                  )}
-                </div>
-
-                {/* Play Button Overlay */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl flex items-center justify-center">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handlePlayPlaylist(playlist)}
-                      className="bg-white text-black rounded-full p-3 hover:scale-110 transition-transform"
-                    >
-                      <Play className="w-6 h-6 ml-0.5" />
-                    </button>
-
-                    <div className="relative">
-                      <button className="text-white hover:bg-white/20 rounded-full p-2 transition-colors">
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
-
-                      {/* Dropdown menu would go here */}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Playlist Info */}
-              <div className="space-y-2">
-                <h3 className="text-white font-bold text-lg truncate">
-                  {playlist.name}
-                </h3>
-
-                {playlist.description && (
-                  <p className="text-gray-400 text-sm line-clamp-2">
-                    {playlist.description}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{playlist.songs?.length || 0} songs</span>
-                  {playlist.songs && playlist.songs.length > 0 && (
-                    <span>{getTotalDuration(playlist.songs)}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-800">
-                <button
-                  onClick={() => openEditModal(playlist)}
-                  className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/10"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={() => handleDeletePlaylist(playlist.id)}
-                  className="text-gray-400 hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-red-500/10"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </FadeInView>
+      ) : playlists.length === 0 ? (
+        <EmptyState
+          icon={ListMusic}
+          title="Belum ada playlist"
+          description="Buat playlist pertama, lalu isi dari menu ⋯ di lagu mana pun — termasuk lagu YouTube."
+          action={<Button size="sm" onClick={() => setCreating(true)}><Plus size={15} /> Buat playlist</Button>}
+        />
       ) : (
-        /* Empty State */
-        <div className="bg-gray-900/30 rounded-2xl p-12 text-center">
-          <Music className="w-20 h-20 text-gray-600 mx-auto mb-6" />
-          <h3 className="text-2xl font-bold text-white mb-4">No playlists yet</h3>
-          <p className="text-gray-400 mb-6 max-w-md mx-auto">
-            Create your first playlist to organize your favorite songs and discover new music.
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-white text-black px-8 py-3 rounded-full hover:scale-105 transition-all duration-200 font-semibold"
-          >
-            Create Your First Playlist
-          </button>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+          {playlists.map((p, i) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => navigate(`/playlists/${p.id}`)}
+              className="kv-press rounded-kv border-3 border-kv-ink bg-kv-surface text-left shadow-kv"
+            >
+              <span className={`kv-dots flex aspect-square w-full items-center justify-center border-b-3 border-kv-ink ${ACCENTS[i % ACCENTS.length]}`}>
+                <ListMusic size={52} className="text-[#0a0a0a]" />
+              </span>
+              <span className="block p-3">
+                <span className="block truncate font-display text-sm uppercase leading-tight">{p.name}</span>
+                {p.description && (
+                  <span className="mt-0.5 block truncate text-xs text-kv-ink-muted">{p.description}</span>
+                )}
+                <span className="mt-1.5 block font-mono text-[10px] font-bold uppercase tracking-wider text-kv-ink-muted">
+                  {p.trackCount ?? p.track_count ?? 0} lagu
+                </span>
+              </span>
+            </button>
+          ))}
         </div>
       )}
 
-      {/* Create Playlist Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full">
-            <h2 className="text-2xl font-bold text-white mb-6">Create New Playlist</h2>
-
-            <form onSubmit={handleCreatePlaylist} className="space-y-4">
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Playlist Name
-                </label>
-                <input
-                  type="text"
-                  value={newPlaylistName}
-                  onChange={(e) => setNewPlaylistName(e.target.value)}
-                  placeholder="My Awesome Playlist"
-                  className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white/20"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Description (Optional)
-                </label>
-                <textarea
-                  value={newPlaylistDescription}
-                  onChange={(e) => setNewPlaylistDescription(e.target.value)}
-                  placeholder="Describe your playlist..."
-                  rows={3}
-                  className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white/20 resize-none"
-                />
-              </div>
-
-              <div className="flex items-center space-x-4 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-white text-black py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-                >
-                  Create Playlist
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setNewPlaylistName('');
-                    setNewPlaylistDescription('');
-                  }}
-                  className="flex-1 bg-gray-800 text-white py-3 rounded-xl font-semibold hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+      <Modal open={creating} onClose={() => setCreating(false)} title="Playlist baru">
+        <form onSubmit={handleCreate} className="space-y-4">
+          <Input
+            label="Nama"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Contoh: Malam santai"
+            maxLength={80}
+            required
+            autoFocus
+          />
+          <Input
+            label="Deskripsi (opsional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Lagu-lagu untuk…"
+            maxLength={200}
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setCreating(false)} disabled={busy}>
+              Batal
+            </Button>
+            <Button type="submit" size="sm" disabled={busy || !name.trim()}>
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+              Buat
+            </Button>
           </div>
-        </div>
-      )}
-
-      {/* Edit Playlist Modal */}
-      {showEditModal && selectedPlaylist && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full">
-            <h2 className="text-2xl font-bold text-white mb-6">Edit Playlist</h2>
-
-            <form onSubmit={handleEditPlaylist} className="space-y-4">
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Playlist Name
-                </label>
-                <input
-                  type="text"
-                  value={newPlaylistName}
-                  onChange={(e) => setNewPlaylistName(e.target.value)}
-                  className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white/20"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={newPlaylistDescription}
-                  onChange={(e) => setNewPlaylistDescription(e.target.value)}
-                  rows={3}
-                  className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white/20 resize-none"
-                />
-              </div>
-
-              <div className="flex items-center space-x-4 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-white text-black py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-                >
-                  Save Changes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditModal(false);
-                    setSelectedPlaylist(null);
-                    setNewPlaylistName('');
-                    setNewPlaylistDescription('');
-                  }}
-                  className="flex-1 bg-gray-800 text-white py-3 rounded-xl font-semibold hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </div>
   );
 };

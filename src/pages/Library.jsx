@@ -1,344 +1,369 @@
-import { useState, useEffect } from 'react';
-import { useAuthStore } from '../stores/auth';
-import { useMusicStore } from '../stores/music';
-import { getAllMusic, deleteMusic } from '../services/supabaseMusicApi';
-import MusicUpload from '../components/MusicUpload';
-import SplitText from '../components/SplitText';
-import FadeInView from '../components/FadeInView';
-import { 
-  Upload, 
-  Music, 
-  Search, 
-  Plus, 
-  Play, 
-  Pause,
-  Trash2,
-  Clock,
-  User,
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Upload,
+  Play,
+  Shuffle,
+  ArrowLeft,
   Disc3,
-  AlertTriangle
+  Music2,
+  Search as SearchIcon,
+  Library as LibraryIcon,
 } from 'lucide-react';
+import { useAuthStore } from '../stores/auth';
+import { getUserMusic, transformMusicData } from '../services/supabaseMusicApi';
+import { getUserAlbums, buildAlbumList, sortAlbums, getAlbumTracks } from '../services/albumApi';
+import { useTrackActions } from '../hooks/useTrackActions';
+import { formatTotalDuration } from '../lib/utils';
+import TrackRow from '../components/TrackRow';
+import AlbumCard from '../components/AlbumCard';
+import ConfirmModal from '../components/ConfirmModal';
+import Tabs from '../components/ui/Tabs';
+import Select from '../components/ui/Select';
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
+import EmptyState from '../components/ui/EmptyState';
+import { TrackRowSkeleton, CardSkeleton } from '../components/ui/Skeleton';
+import { toast } from '../stores/toast';
+
+const TRACK_SORTS = [
+  { value: 'newest', label: 'Terbaru' },
+  { value: 'title', label: 'Judul A–Z' },
+  { value: 'artist', label: 'Artis A–Z' },
+  { value: 'duration', label: 'Durasi' },
+  { value: 'plays', label: 'Paling sering diputar' },
+];
+
+const ALBUM_SORTS = [
+  { value: 'newest', label: 'Terbaru' },
+  { value: 'title', label: 'Judul A–Z' },
+  { value: 'artist', label: 'Artis A–Z' },
+  { value: 'year', label: 'Tahun' },
+  { value: 'tracks', label: 'Jumlah lagu' },
+];
+
+const sortTracks = (list, key) => {
+  const arr = [...list];
+  switch (key) {
+    case 'title':
+      return arr.sort((a, b) => a.title.localeCompare(b.title));
+    case 'artist':
+      return arr.sort((a, b) => (a.artist || '').localeCompare(b.artist || ''));
+    case 'duration':
+      return arr.sort((a, b) => (b.duration || 0) - (a.duration || 0));
+    case 'plays':
+      return arr.sort((a, b) => (b.playCount || 0) - (a.playCount || 0));
+    case 'newest':
+    default:
+      return arr.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  }
+};
 
 const Library = () => {
-  const { user } = useAuthStore();
-  const { currentTrack, isPlaying, playTrack, pauseTrack, addToQueue } = useMusicStore();
-  
-  const [musicLibrary, setMusicLibrary] = useState([]);
-  const [filteredMusic, setFilteredMusic] = useState([]);
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const user = useAuthStore((s) => s.user);
+  const actions = useTrackActions();
+
+  const tab = params.get('tab') === 'albums' ? 'albums' : 'tracks';
+  const albumName = params.get('album') || '';
+
+  const [tracks, setTracks] = useState([]);
+  const [albums, setAlbums] = useState([]);
+  const [albumTracks, setAlbumTracks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [selectedGenre, setSelectedGenre] = useState('All');
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [albumLoading, setAlbumLoading] = useState(false);
+  const [filter, setFilter] = useState('');
+  const [trackSort, setTrackSort] = useState('newest');
+  const [albumSort, setAlbumSort] = useState('newest');
+  const [toDelete, setToDelete] = useState(null);
 
-  // Load music library on component mount
-  useEffect(() => {
-    loadMusicLibrary();
-  }, []);
-
-  // Filter music when search query or genre changes
-  useEffect(() => {
-    filterMusic();
-  }, [searchQuery, selectedGenre, musicLibrary]);
-
-  const loadMusicLibrary = async () => {
+  const load = async () => {
+    if (!user) return;
+    setLoading(true);
     try {
-      setLoading(true);
-      const music = await getAllMusic();
-      setMusicLibrary(music);
-    } catch (error) {
-      console.error('Failed to load music library:', error);
+      const [music, albumRows] = await Promise.all([
+        getUserMusic(user.id),
+        getUserAlbums(user.id).catch(() => []),
+      ]);
+      setTracks(music);
+      setAlbums(buildAlbumList(albumRows, music));
+    } catch {
+      toast.error('Gagal memuat library');
     } finally {
       setLoading(false);
     }
   };
 
-  const filterMusic = () => {
-    let filtered = musicLibrary;
+  useEffect(() => {
+    load();
+  }, [user?.id]);
 
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(song =>
-        song.title.toLowerCase().includes(query) ||
-        song.artist.toLowerCase().includes(query) ||
-        song.album.toLowerCase().includes(query) ||
-        song.genre.toLowerCase().includes(query)
-      );
+  useEffect(() => {
+    if (!albumName || !user) {
+      setAlbumTracks([]);
+      return;
     }
+    let cancelled = false;
+    setAlbumLoading(true);
+    getAlbumTracks(user.id, albumName)
+      .then((rows) => {
+        if (cancelled) return;
+        setAlbumTracks(rows.map(transformMusicData).filter((t) => t && t.source !== 'youtube'));
+      })
+      .catch(() => {
+        if (!cancelled) toast.error('Gagal memuat album');
+      })
+      .finally(() => {
+        if (!cancelled) setAlbumLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [albumName, user?.id]);
 
-    // Filter by genre
-    if (selectedGenre !== 'All') {
-      filtered = filtered.filter(song =>
-        song.genre === selectedGenre
-      );
+  const visibleTracks = useMemo(() => {
+    const f = filter.trim().toLowerCase();
+    const base = f
+      ? tracks.filter(
+          (t) =>
+            t.title.toLowerCase().includes(f) ||
+            (t.artist || '').toLowerCase().includes(f) ||
+            (t.album || '').toLowerCase().includes(f)
+        )
+      : tracks;
+    return sortTracks(base, trackSort);
+  }, [tracks, filter, trackSort]);
+
+  const visibleAlbums = useMemo(() => sortAlbums(albums, albumSort), [albums, albumSort]);
+
+  const totalDuration = useMemo(() => tracks.reduce((acc, t) => acc + (t.duration || 0), 0), [tracks]);
+
+  const currentAlbum = albums.find((a) => a.name.toLowerCase() === albumName.toLowerCase());
+
+  const setTab = (v) => {
+    const next = { tab: v };
+    setParams(next, { replace: true });
+  };
+
+  const openAlbum = (name) => setParams({ tab: 'albums', album: name }, { replace: true });
+  const closeAlbum = () => setParams({ tab: 'albums' }, { replace: true });
+
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    const ok = await actions.remove(toDelete);
+    if (ok) {
+      setToDelete(null);
+      load();
+      if (albumName) {
+        setAlbumTracks((prev) => prev.filter((t) => t.id !== toDelete.id));
+      }
     }
-
-    setFilteredMusic(filtered);
   };
 
-  const handlePlay = (song) => {
-    if (currentTrack?.id === song.id && isPlaying) {
-      pauseTrack();
-    } else {
-      playTrack(song);
-    }
-  };
-
-  const handleDelete = async (song) => {
-    if (!song.firestoreId) return;
-    
-    try {
-      await deleteMusic(
-        song.firestoreId,
-        song.audioPath,
-        song.albumArtPath,
-        song.lyricsPath
-      );
-      
-      // Remove from local state
-      setMusicLibrary(prev =>
-        prev.filter(track => track.firestoreId !== song.firestoreId)
-      );
-      
-      setDeleteConfirm(null);
-    } catch (error) {
-      console.error('Failed to delete music:', error);
-      alert('Failed to delete music. Please try again.');
-    }
-  };
-
-  const handleUploadSuccess = (newSong) => {
-    setMusicLibrary(prev => [newSong, ...prev]);
-    setShowUploadModal(false);
-  };
-
-  const formatDuration = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const getUniqueGenres = () => {
-    const genres = musicLibrary.map(song => song.genre).filter(Boolean);
-    return ['All', ...new Set(genres)];
-  };
-
-  if (loading) {
+  if (albumName) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex items-center space-x-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
-          <span className="text-gray-600">Loading your music library...</span>
-        </div>
+      <div className="mx-auto max-w-5xl space-y-6">
+        <button
+          type="button"
+          onClick={closeAlbum}
+          className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-wider text-kv-ink-muted hover:text-kv-ink"
+        >
+          <ArrowLeft size={14} /> Semua album
+        </button>
+
+        <header className="kv-card flex flex-col gap-5 p-5 sm:flex-row sm:items-end sm:p-6">
+          <span className="kv-dots block h-36 w-36 shrink-0 overflow-hidden rounded-kv border-3 border-kv-ink bg-kv-purple shadow-kv-lg sm:h-44 sm:w-44">
+            {currentAlbum?.coverArt ? (
+              <img src={currentAlbum.coverArt} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center">
+                <Disc3 size={56} className="text-[#0a0a0a]" />
+              </span>
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <Badge tone="blue">Album</Badge>
+            <h1 className="mt-2 font-display text-3xl uppercase leading-tight sm:text-4xl">{albumName}</h1>
+            <p className="mt-1 font-semibold text-kv-ink-muted">{currentAlbum?.artist || 'Various Artists'}</p>
+            <p className="mt-1 font-mono text-xs text-kv-ink-muted">
+              {albumTracks.length} lagu · {formatTotalDuration(albumTracks.reduce((a, t) => a + (t.duration || 0), 0))}
+              {currentAlbum?.year ? ` · ${currentAlbum.year}` : ''}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => actions.playAll(albumTracks)} disabled={albumTracks.length === 0}>
+                <Play size={15} /> Putar semua
+              </Button>
+              <Button size="sm" variant="pink" onClick={() => actions.shuffleAll(albumTracks)} disabled={albumTracks.length === 0}>
+                <Shuffle size={15} /> Acak
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        {albumLoading ? (
+          <div className="space-y-2">
+            {[...Array(4)].map((_, i) => <TrackRowSkeleton key={i} />)}
+          </div>
+        ) : albumTracks.length === 0 ? (
+          <EmptyState icon={Music2} title="Album kosong" description="Belum ada lagu upload dengan nama album ini." />
+        ) : (
+          <div className="space-y-1.5">
+            {albumTracks.map((t, i) => (
+              <TrackRow
+                key={t.id}
+                track={t}
+                index={i}
+                list={albumTracks}
+                showAlbum={false}
+                onDelete={() => setToDelete(t)}
+              />
+            ))}
+          </div>
+        )}
+
+        <ConfirmModal
+          open={!!toDelete}
+          onClose={() => setToDelete(null)}
+          onConfirm={confirmDelete}
+          title="Hapus lagu?"
+          message={`"${toDelete?.title}" akan dihapus permanen dari library, beserta file audio, sampul, dan liriknya. Lagu juga hilang dari playlist dan favorit.`}
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+    <div className="mx-auto max-w-5xl space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <SplitText className="text-3xl font-bold text-white mb-2" delay={0.1}>
-            My Music Library
-          </SplitText>
-          <p className="text-gray-400 animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
-            {musicLibrary.length} {musicLibrary.length === 1 ? 'track' : 'tracks'} in your library
+          <h1 className="font-display text-3xl uppercase sm:text-4xl">Library kamu</h1>
+          <p className="mt-1 flex flex-wrap items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-kv-ink-muted">
+            <Badge tone="yellow">{tracks.length} lagu</Badge>
+            <Badge tone="blue">{albums.length} album</Badge>
+            <Badge tone="pink">{formatTotalDuration(totalDuration)}</Badge>
           </p>
         </div>
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="retro-button mt-4 sm:mt-0 animate-fade-in-up"
-          style={{ animationDelay: '0.8s' }}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Upload Music
-        </button>
-      </div>
+        <Button onClick={() => navigate('/upload')}>
+          <Upload size={17} /> Upload
+        </Button>
+      </header>
 
-      {/* Search and Filter Bar */}
-      <div className="retro-card p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search Input */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+      <Tabs
+        tabs={[
+          { value: 'tracks', label: 'Semua lagu' },
+          { value: 'albums', label: 'Album' },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+
+      {tab === 'tracks' ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="relative min-w-[200px] flex-1">
+              <SearchIcon size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-kv-ink-muted" />
               <input
-                type="text"
-                placeholder="Search your music..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="retro-input pl-10"
+                type="search"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Saring judul, artis, album…"
+                aria-label="Saring lagu"
+                className="min-h-[44px] w-full rounded-kv border-3 border-kv-ink bg-kv-surface py-2 pl-9 pr-3 text-sm font-semibold shadow-kv placeholder:text-kv-ink-muted/60"
               />
             </div>
-            
-            {/* Genre Filter */}
-            <select
-              value={selectedGenre}
-              onChange={(e) => setSelectedGenre(e.target.value)}
-              className="retro-input w-auto min-w-32"
-            >
-              {getUniqueGenres().map(genre => (
-                <option key={genre} value={genre} className="bg-black text-white">
-                  {genre}
-                </option>
+            <Select
+              label="Urutkan lagu"
+              options={TRACK_SORTS}
+              value={trackSort}
+              onChange={(e) => setTrackSort(e.target.value)}
+            />
+            <Button size="sm" onClick={() => actions.playAll(visibleTracks)} disabled={visibleTracks.length === 0}>
+              <Play size={15} /> Putar
+            </Button>
+            <Button size="sm" variant="pink" onClick={() => actions.shuffleAll(visibleTracks)} disabled={visibleTracks.length === 0}>
+              <Shuffle size={15} /> Acak
+            </Button>
+          </div>
+
+          {loading ? (
+            <div className="space-y-2">
+              {[...Array(6)].map((_, i) => <TrackRowSkeleton key={i} />)}
+            </div>
+          ) : visibleTracks.length === 0 ? (
+            <EmptyState
+              icon={LibraryIcon}
+              title={filter ? 'Tidak ada yang cocok' : 'Belum ada lagu'}
+              description={
+                filter
+                  ? `Tidak ada lagu yang cocok dengan "${filter}".`
+                  : 'Upload lagu pertamamu untuk mulai membangun koleksi.'
+              }
+              action={!filter && <Button size="sm" onClick={() => navigate('/upload')}><Upload size={15} /> Upload lagu</Button>}
+            />
+          ) : (
+            <div className="space-y-1.5">
+              {visibleTracks.map((t, i) => (
+                <TrackRow key={t.id} track={t} index={i} list={visibleTracks} onDelete={() => setToDelete(t)} />
               ))}
-            </select>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-kv-ink-muted">Urutkan:</span>
+            <Select
+              label="Urutkan album"
+              options={ALBUM_SORTS}
+              value={albumSort}
+              onChange={(e) => setAlbumSort(e.target.value)}
+            />
           </div>
-        </div>
 
-        {/* Empty State */}
-        {filteredMusic.length === 0 && !loading ? (
-          <div className="retro-card p-12 text-center">
-            {musicLibrary.length === 0 ? (
-              <div>
-                <Music className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-white mb-2">No music uploaded yet</h3>
-                <p className="text-gray-400 mb-6">Start building your music library by uploading your favorite tracks</p>
-                <button
-                  onClick={() => setShowUploadModal(true)}
-                  className="retro-button"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Your First Track
-                </button>
-              </div>
-            ) : (
-              <div>
-                <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-white mb-2">No music found</h3>
-                <p className="text-gray-400">Try adjusting your search terms or filters</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Music Grid */
-          <FadeInView className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6" stagger={0.05}>
-            {filteredMusic.map((song) => (
-              <div
-                key={song.firestoreId || song.id}
-                className="retro-card overflow-hidden group"
-              >
-                {/* Album Art */}
-                <div className="aspect-square relative">
-                  <img
-                    src={song.albumArt || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop'}
-                    alt={`${song.title} artwork`}
-                    className="w-full h-full object-cover"
-                  />
-                  
-                  {/* Play Button Overlay */}
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => handlePlay(song)}
-                      className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-transform"
-                    >
-                      {currentTrack?.id === song.id && isPlaying ? (
-                        <Pause className="w-5 h-5 text-black ml-0.5" />
-                      ) : (
-                        <Play className="w-5 h-5 text-black ml-0.5" />
-                      )}
-                    </button>
-                  </div>
-                  
-                  {/* Currently Playing Indicator */}
-                  {currentTrack?.id === song.id && (
-                    <div className="absolute top-3 right-3 w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                  )}
-                  
-                  {/* Delete Button */}
-                  {song.uploadedBy === user?.uid && (
-                    <button
-                      onClick={() => setDeleteConfirm(song)}
-                      className="absolute top-3 left-3 w-8 h-8 bg-red-500 bg-opacity-80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4 text-white" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Song Info */}
-                <div className="p-4">
-                  <h3 className="font-semibold text-white truncate mb-1">{song.title}</h3>
-                  <p className="text-gray-400 text-sm truncate mb-3">{song.artist}</p>
-                  
-                  <div className="flex items-center text-xs text-gray-500 space-x-3 mb-2">
-                    <div className="flex items-center">
-                      <Clock className="w-3 h-3 mr-1" />
-                      {formatDuration(song.duration)}
-                    </div>
-                    <div className="flex items-center">
-                      <Disc3 className="w-3 h-3 mr-1" />
-                      {song.genre || 'Unknown'}
-                    </div>
-                  </div>
-                  
-                  {song.fileSize && (
-                    <div className="text-xs text-gray-500">
-                      {formatFileSize(song.fileSize)}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </FadeInView>
-        )}
-
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <MusicUpload
-            onUploadSuccess={handleUploadSuccess}
-            onClose={() => setShowUploadModal(false)}
-          />
-        </div>
+          {loading ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+              {[...Array(8)].map((_, i) => <CardSkeleton key={i} />)}
+            </div>
+          ) : visibleAlbums.length === 0 ? (
+            <EmptyState
+              icon={Disc3}
+              title="Belum ada album"
+              description="Album muncul otomatis dari metadata lagu yang kamu upload."
+              action={<Button size="sm" onClick={() => navigate('/upload')}><Upload size={15} /> Upload lagu</Button>}
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+              {visibleAlbums.map((a, i) => (
+                <AlbumCard
+                  key={a.id}
+                  album={a}
+                  index={i}
+                  onClick={() => openAlbum(a.name)}
+                  onPlay={async () => {
+                    try {
+                      const rows = await getAlbumTracks(user.id, a.name);
+                      const list = rows.map(transformMusicData).filter((t) => t && t.source !== 'youtube');
+                      if (list.length) actions.playAll(list);
+                      else toast.info('Album ini belum punya lagu.');
+                    } catch {
+                      toast.error('Gagal memutar album');
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="retro-card p-8 max-w-md w-full">
-            <div className="flex items-center mb-6">
-              <div className="w-12 h-12 bg-red-500 bg-opacity-20 rounded-full flex items-center justify-center mr-4">
-                <AlertTriangle className="w-6 h-6 text-red-500" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-white">Delete Track</h3>
-                <p className="text-gray-400 text-sm">This action cannot be undone</p>
-              </div>
-            </div>
-            
-            <div className="retro-card mb-6 p-4 bg-black bg-opacity-30">
-              <p className="text-white font-medium">{deleteConfirm.title}</p>
-              <p className="text-gray-400 text-sm">{deleteConfirm.artist}</p>
-            </div>
-            
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(deleteConfirm)}
-                className="flex-1 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center justify-center"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        open={!!toDelete}
+        onClose={() => setToDelete(null)}
+        onConfirm={confirmDelete}
+        title="Hapus lagu?"
+        message={`"${toDelete?.title}" akan dihapus permanen dari library, beserta file audio, sampul, dan liriknya. Lagu juga hilang dari playlist dan favorit.`}
+      />
     </div>
   );
 };

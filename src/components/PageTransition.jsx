@@ -1,34 +1,9 @@
-import React, { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
+import { useLocation } from 'react-router-dom';
 
 const PageTransition = ({ children }) => {
-  const containerRef = useRef(null);
-  const hasAnimated = useRef(false);
-
-  useEffect(() => {
-    if (!containerRef.current || hasAnimated.current) return;
-
-    const tl = gsap.timeline();
-    
-    // Initial state
-    gsap.set(containerRef.current, {
-      opacity: 0,
-      scale: 0.98,
-    });
-
-    // Animate in
-    tl.to(containerRef.current, {
-      opacity: 1,
-      scale: 1,
-      duration: 0.6,
-      ease: 'power3.out',
-    });
-
-    hasAnimated.current = true;
-  }, []);
-
+  const location = useLocation();
   return (
-    <div ref={containerRef}>
+    <div key={location.pathname} className="animate-fade-in">
       {children}
     </div>
   );

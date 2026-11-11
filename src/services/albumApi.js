@@ -1,214 +1,116 @@
-// Album Management Service
-// Manages albums stored in Firestore
+import { supabase } from '../config/supabase';
 
-import { 
-  collection, 
-  getDocs, 
-  addDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  where, 
-  orderBy,
-  updateDoc,
-  serverTimestamp
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+const transformAlbum = (row) => ({
+  id: row.id,
+  userId: row.user_id,
+  name: row.name,
+  artist: row.artist,
+  coverArt: row.cover_art,
+  year: row.year,
+  trackCount: row.track_count || 0,
+  createdAt: row.created_at,
+});
 
-const ALBUMS_COLLECTION = 'albums';
-
-// Create new album
 export const createAlbum = async (userId, albumData) => {
-  try {
-    const album = {
+  const { data, error } = await supabase
+    .from('albums')
+    .insert({
+      user_id: userId,
       name: albumData.name,
       artist: albumData.artist || 'Unknown Artist',
+      cover_art: albumData.coverArt || null,
       year: albumData.year || new Date().getFullYear(),
-      genre: albumData.genre || 'Unknown',
-      coverArt: albumData.coverArt || null,
-      userId,
-      trackCount: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-
-    const docRef = await addDoc(collection(db, ALBUMS_COLLECTION), album);
-    console.log('✅ Album created:', docRef.id);
-    
-    return { id: docRef.id, ...album };
-  } catch (error) {
-    console.error('Error creating album:', error);
-    throw error;
-  }
+      track_count: 0,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return transformAlbum(data);
 };
 
-// Get all albums for a user
 export const getUserAlbums = async (userId) => {
-  try {
-    const albumsQuery = query(
-      collection(db, ALBUMS_COLLECTION),
-      where('userId', '==', userId)
-    );
-
-    const querySnapshot = await getDocs(albumsQuery);
-    const albums = [];
-    
-    querySnapshot.forEach((doc) => {
-      albums.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
-
-    // Sort by updatedAt manually (client-side sorting)
-    albums.sort((a, b) => {
-      const aTime = a.updatedAt?.toMillis?.() || 0;
-      const bTime = b.updatedAt?.toMillis?.() || 0;
-      return bTime - aTime;
-    });
-
-    return albums;
-  } catch (error) {
-    console.error('Error getting user albums:', error);
-    throw error;
-  }
+  const { data, error } = await supabase
+    .from('albums')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(transformAlbum);
 };
 
-// Get all unique albums from music library
-export const getAllAlbums = async () => {
-  try {
-    const albumsQuery = query(
-      collection(db, ALBUMS_COLLECTION),
-      orderBy('name', 'asc')
-    );
-
-    const querySnapshot = await getDocs(albumsQuery);
-    const albums = [];
-    
-    querySnapshot.forEach((doc) => {
-      albums.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
-
-    return albums;
-  } catch (error) {
-    console.error('Error getting albums:', error);
-    throw error;
-  }
-};
-
-// Update album
 export const updateAlbum = async (albumId, updates) => {
-  try {
-    const albumRef = doc(db, ALBUMS_COLLECTION, albumId);
-    await updateDoc(albumRef, {
-      ...updates,
-      updatedAt: serverTimestamp()
-    });
-    
-    console.log('✅ Album updated successfully');
-    return true;
-  } catch (error) {
-    console.error('Error updating album:', error);
-    throw error;
-  }
+  const { data, error } = await supabase
+    .from('albums')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', albumId)
+    .select()
+    .single();
+  if (error) throw error;
+  return transformAlbum(data);
 };
 
-// Increment track count
-export const incrementTrackCount = async (albumId) => {
-  try {
-    const albumsQuery = query(
-      collection(db, ALBUMS_COLLECTION),
-      where('name', '==', albumId)
-    );
-    
-    const querySnapshot = await getDocs(albumsQuery);
-    
-    if (!querySnapshot.empty) {
-      const albumDoc = querySnapshot.docs[0];
-      const currentCount = albumDoc.data().trackCount || 0;
-      
-      await updateDoc(albumDoc.ref, {
-        trackCount: currentCount + 1,
-        updatedAt: serverTimestamp()
+export const deleteAlbum = async (albumId) => {
+  const { error } = await supabase.from('albums').delete().eq('id', albumId);
+  if (error) throw error;
+  return true;
+};
+
+export const getAlbumTracks = async (userId, albumName) => {
+  const { data, error } = await supabase
+    .from('music_library')
+    .select('*')
+    .eq('user_id', userId)
+    .ilike('album', albumName)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+};
+
+export const syncAlbumTrackCount = async (albumId, count) => {
+  await supabase.from('albums').update({ track_count: count }).eq('id', albumId);
+};
+
+// Merge explicit album rows with album groups derived from track metadata,
+// so every uploaded album shows up even without an albums row.
+export const buildAlbumList = (albums, tracks) => {
+  const byName = new Map();
+  for (const album of albums) {
+    byName.set(album.name.toLowerCase(), { ...album, trackCount: 0, derived: false });
+  }
+  for (const track of tracks) {
+    const name = track.album || 'Unknown Album';
+    const key = name.toLowerCase();
+    if (!byName.has(key)) {
+      byName.set(key, {
+        id: `derived:${key}`,
+        name,
+        artist: track.artist,
+        coverArt: track.albumArt || null,
+        year: null,
+        trackCount: 0,
+        derived: true,
       });
     }
-  } catch (error) {
-    console.error('Error incrementing track count:', error);
+    const entry = byName.get(key);
+    entry.trackCount += 1;
+    if (!entry.coverArt && track.albumArt) entry.coverArt = track.albumArt;
   }
+  return [...byName.values()];
 };
 
-// Delete album
-export const deleteAlbum = async (albumId) => {
-  try {
-    await deleteDoc(doc(db, ALBUMS_COLLECTION, albumId));
-    console.log('🗑️ Album deleted successfully');
-    return true;
-  } catch (error) {
-    console.error('Error deleting album:', error);
-    throw error;
-  }
-};
-
-// Get album by name (for checking if exists)
-export const getAlbumByName = async (albumName, artist) => {
-  try {
-    let albumsQuery = query(
-      collection(db, ALBUMS_COLLECTION),
-      where('name', '==', albumName)
-    );
-    
-    if (artist) {
-      albumsQuery = query(
-        collection(db, ALBUMS_COLLECTION),
-        where('name', '==', albumName),
-        where('artist', '==', artist)
-      );
-    }
-
-    const querySnapshot = await getDocs(albumsQuery);
-    
-    if (!querySnapshot.empty) {
-      const albumDoc = querySnapshot.docs[0];
-      return {
-        id: albumDoc.id,
-        ...albumDoc.data()
-      };
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Error getting album by name:', error);
-    throw error;
-  }
-};
-
-// Get or create album (helper function for upload)
-export const getOrCreateAlbum = async (albumName, artist, userId, coverArt = null) => {
-  try {
-    // Check if album already exists
-    const existingAlbum = await getAlbumByName(albumName, artist);
-    
-    if (existingAlbum) {
-      // Update cover art if provided and not set
-      if (coverArt && !existingAlbum.coverArt) {
-        await updateAlbum(existingAlbum.id, { coverArt });
-      }
-      return existingAlbum;
-    }
-    
-    // Create new album
-    const newAlbum = await createAlbum(userId, {
-      name: albumName,
-      artist,
-      coverArt
-    });
-    
-    return newAlbum;
-  } catch (error) {
-    console.error('Error getting or creating album:', error);
-    throw error;
+export const sortAlbums = (albums, sortKey) => {
+  const list = [...albums];
+  switch (sortKey) {
+    case 'title':
+      return list.sort((a, b) => a.name.localeCompare(b.name));
+    case 'artist':
+      return list.sort((a, b) => (a.artist || '').localeCompare(b.artist || ''));
+    case 'year':
+      return list.sort((a, b) => (b.year || 0) - (a.year || 0));
+    case 'tracks':
+      return list.sort((a, b) => b.trackCount - a.trackCount);
+    case 'newest':
+    default:
+      return list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }
 };
