@@ -4,6 +4,7 @@ import IconButton from '../ui/IconButton';
 import Ambient from '../Ambient';
 import Transport from './Transport';
 import SeekSlider from './SeekSlider';
+import Visualizer from './Visualizer';
 
 export default function MiniPlayer() {
   const track = useMusicStore((s) => s.currentTrack);
@@ -21,6 +22,7 @@ export default function MiniPlayer() {
           <span className="min-w-0"><span className="block truncate text-sm font-bold">{track.title}</span><span className="block truncate text-xs text-kv-ink-muted">{track.artist}</span></span>
         </button>
         <Transport compact />
+        <div className="hidden h-9 w-24 shrink-0 lg:block"><Visualizer bars={28} /></div>
         <div className="hidden flex-1 items-center justify-end gap-1 lg:flex">
           <IconButton label="Lirik" onClick={() => setNowPlayingOpen(true, 'lyrics')}><Mic2 size={18} /></IconButton>
           <IconButton label="Antrean" onClick={() => setNowPlayingOpen(true, 'queue')}><ListMusic size={18} /></IconButton>

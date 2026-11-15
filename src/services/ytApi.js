@@ -3,6 +3,8 @@ const CACHE_TTL = 5 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 100;
 let searchController = null;
 let suggestController = null;
+let relatedController = null;
+let radioController = null;
 
 const cached = (key) => {
   for (const [id, entry] of cache) {
@@ -90,4 +92,57 @@ export const suggestYouTube = async (query, { signal } = {}) => {
   } finally {
     if (suggestController === controller) suggestController = null;
   }
+};
+
+// Related / automix radio for a YouTube video — powers autoplay + Up Next.
+export const getRelatedYouTube = async (videoId, { signal, limit = 20 } = {}) => {
+  if (!videoId) return [];
+  const key = `related:${videoId}:${limit}`;
+  const hit = cached(key);
+  if (hit) return hit;
+
+  relatedController?.abort();
+  const controller = new AbortController();
+  relatedController = controller;
+  try {
+    const params = new URLSearchParams({ videoId, limit: String(limit) });
+    const { res, body } = await requestJson(`/api/yt-related?${params}`, controller, signal);
+    if (controller.signal.aborted) throw controller.signal.reason;
+    if (!res.ok) return [];
+    return remember(key, (body.items || []).map(ytItemToTrack));
+  } finally {
+    if (relatedController === controller) relatedController = null;
+  }
+};
+
+// Radio seed for personal uploads (no videoId): search by title+artist using a
+// dedicated controller so autoplay prefetch never aborts an active user search.
+export const getRelatedByQuery = async (query, { signal, limit = 12 } = {}) => {
+  if (!query || query.trim().length < 2) return [];
+  const key = `radio:${query}:${limit}`;
+  const hit = cached(key);
+  if (hit) return hit;
+
+  radioController?.abort();
+  const controller = new AbortController();
+  radioController = controller;
+  try {
+    const params = new URLSearchParams({ q: query, type: 'song', limit: String(limit) });
+    const { res, body } = await requestJson(`/api/yt-search?${params}`, controller, signal);
+    if (controller.signal.aborted) throw controller.signal.reason;
+    if (!res.ok) return [];
+    return remember(key, (body.items || []).map(ytItemToTrack));
+  } finally {
+    if (radioController === controller) radioController = null;
+  }
+};
+
+// Import a public YouTube / YouTube Music playlist by URL or id (no login).
+export const importYouTubePlaylist = async (list, { signal, limit = 100 } = {}) => {
+  const controller = new AbortController();
+  const params = new URLSearchParams({ list, limit: String(limit) });
+  const { res, body } = await requestJson(`/api/yt-playlist?${params}`, controller, signal);
+  if (controller.signal.aborted) throw controller.signal.reason;
+  if (!res.ok) throw new Error(body.error || 'Gagal mengimpor playlist.');
+  return { title: body.title || 'Playlist YouTube', items: (body.items || []).map(ytItemToTrack) };
 };

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search as SearchIcon, Youtube, Library, Loader2, X, Clock3, Music2, Disc3, UserRound } from 'lucide-react';
+import { Search as SearchIcon, Youtube, Library, Loader2, X, Clock3, Music2, Disc3, UserRound, ListPlus } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
 import { searchYouTube, suggestYouTube, ytItemToTrack } from '../services/ytApi';
 import { searchMusic } from '../services/supabaseMusicApi';
@@ -9,6 +9,7 @@ import Tabs from '../components/ui/Tabs';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import Button from '../components/ui/Button';
+import ImportPlaylistModal from '../components/ImportPlaylistModal';
 import { TrackRowSkeleton, CardSkeleton } from '../components/ui/Skeleton';
 import { debounce } from '../lib/utils';
 
@@ -81,6 +82,7 @@ const Search = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [history, setHistory] = useState(readHistory);
+  const [importOpen, setImportOpen] = useState(false);
   const inputRef = useRef(null);
   const boxRef = useRef(null);
 
@@ -257,6 +259,9 @@ const Search = () => {
           onChange={(v) => runSearch(input, v, type)}
         />
         {src === 'yt' && <Tabs tabs={TYPE_TABS} active={type} onChange={(v) => runSearch(input, src, v)} />}
+        <Button variant="secondary" size="sm" className="ml-auto" onClick={() => setImportOpen(true)}>
+          <ListPlus size={15} /> Impor playlist
+        </Button>
       </div>
 
       {state === 'idle' && (
@@ -386,6 +391,8 @@ const Search = () => {
           </div>
         </section>
       )}
+
+      <ImportPlaylistModal open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   );
 };

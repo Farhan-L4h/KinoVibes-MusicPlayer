@@ -213,6 +213,8 @@ const LyricsView = ({ compact = false }) => {
             {lyrics.synced.map((line, i) => {
               const active = i === activeIndex;
               const passed = i < activeIndex;
+              const dist = Math.abs(i - activeIndex);
+              const band = active ? 'active' : dist <= 2 ? 'near' : dist <= 4 ? 'mid' : 'far';
               return (
                 <button
                   key={`${line.timeMs}-${i}`}
@@ -222,7 +224,7 @@ const LyricsView = ({ compact = false }) => {
                   className="kv-lyric-line"
                   data-active={active}
                   data-passed={passed}
-                  data-near={!active && Math.abs(i - activeIndex) <= 2}
+                  data-band={band}
                   aria-current={active ? 'true' : undefined}
                 >
                   {line.text}

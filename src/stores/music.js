@@ -6,6 +6,7 @@ import { ytPlayer } from '../player/youtube';
 import { updateMediaMetadata, updateMediaPosition, bindMediaActions, clearMediaSession } from '../player/mediaSession';
 import { getLyricsOffset } from '../services/lyricsApi';
 import { findActiveLine } from '../lib/lrc';
+import { getRelatedYouTube, getRelatedByQuery } from '../services/ytApi';
 import { toast } from './toast';
 
 const SESSION_KEY = 'kv-session';
@@ -239,6 +240,7 @@ const useMusicStore = create((set, get) => ({
   playlist: [],
   currentIndex: -1,
   queue: [],
+  autoplayQueue: [],
   isPlaying: false,
   status: 'idle',
   currentTime: 0,
@@ -247,6 +249,7 @@ const useMusicStore = create((set, get) => ({
   muted: !!savedPrefs.muted,
   shuffle: !!savedPrefs.shuffle,
   repeat: savedPrefs.repeat || 'off',
+  autoplay: savedPrefs.autoplay !== false,
   error: null,
   lyrics: null,
   currentLyricIndex: -1,
@@ -293,6 +296,7 @@ const useMusicStore = create((set, get) => ({
       incrementPlayCount(track.id).catch(() => {});
     }
     get()._persistSession();
+    void get()._prefetchRelated();
 
     if (track.source === 'youtube') {
       // VideoDock mounts the iframe; hooks below drive the state machine.
@@ -376,14 +380,29 @@ const useMusicStore = create((set, get) => ({
     } else {
       nextIndex = currentIndex + 1;
       if (nextIndex >= playlist.length) {
-        if (auto && repeat === 'off') {
-          get().pause();
-          set({ currentTime: 0 });
-          if (howl?.state() === 'loaded') howl.seek(0);
-          get()._persistSession();
-          return;
+        if (repeat !== 'off') {
+          nextIndex = 0;
+        } else {
+          // Context exhausted: continue with the autoplay radio (YouTube Music style).
+          const radio = get().autoplayQueue;
+          if (get().autoplay && radio.length > 0) {
+            const [next, ...rest] = radio;
+            get().playTrack(next, [next, ...rest]);
+            return;
+          }
+          if (auto) {
+            if (get().autoplay) {
+              void get()._autoplayNext();
+              return;
+            }
+            get().pause();
+            set({ currentTime: 0 });
+            if (howl?.state() === 'loaded') howl.seek(0);
+            get()._persistSession();
+            return;
+          }
+          nextIndex = 0;
         }
-        nextIndex = 0;
       }
     }
     get().playTrack(playlist[nextIndex], playlist);
@@ -470,6 +489,83 @@ const useMusicStore = create((set, get) => ({
     const queue = get().queue.filter((t) => t.id !== track.id);
     set({ queue: [track, ...queue] });
     toast.success('Akan diputar berikutnya');
+    get()._persistSession();
+  },
+
+  toggleAutoplay: () => {
+    const autoplay = !get().autoplay;
+    set({ autoplay });
+    get()._persistPrefs();
+    if (autoplay) void get()._prefetchRelated();
+    else set({ autoplayQueue: [] });
+  },
+
+  removeFromAutoplay: (trackId) => {
+    set({ autoplayQueue: get().autoplayQueue.filter((t) => t.id !== trackId) });
+  },
+
+  moveInQueue: (trackId, dir) => {
+    const queue = [...get().queue];
+    const i = queue.findIndex((t) => t.id === trackId);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= queue.length) return;
+    [queue[i], queue[j]] = [queue[j], queue[i]];
+    set({ queue });
+    get()._persistSession();
+  },
+
+  _fetchRelated: async () => {
+    const { currentTrack } = get();
+    if (!currentTrack) return [];
+    const token = playToken;
+    let items = [];
+    try {
+      if (currentTrack.source === 'youtube' && currentTrack.videoId) {
+        items = await getRelatedYouTube(currentTrack.videoId, { limit: 20 });
+      } else {
+        items = await getRelatedByQuery(`${currentTrack.title || ''} ${currentTrack.artist || ''}`.trim());
+      }
+    } catch {
+      return [];
+    }
+    if (token !== playToken || get().currentTrack?.id !== currentTrack.id) return [];
+    const { queue, playlist, autoplayQueue } = get();
+    const exclude = new Set([
+      currentTrack.id,
+      ...queue.map((t) => t.id),
+      ...playlist.map((t) => t.id),
+      ...autoplayQueue.map((t) => t.id),
+      ...getRecentTracks().map((t) => t.id),
+    ]);
+    const seen = new Set();
+    const out = [];
+    for (const t of items) {
+      if (!t?.id || exclude.has(t.id) || seen.has(t.id)) continue;
+      seen.add(t.id);
+      out.push(t);
+      if (out.length >= 20) break;
+    }
+    return out;
+  },
+
+  _prefetchRelated: async () => {
+    if (!get().autoplay || !get().currentTrack) return;
+    const seed = get().currentTrack.id;
+    const tracks = await get()._fetchRelated();
+    if (!get().autoplay || get().currentTrack?.id !== seed) return;
+    set({ autoplayQueue: tracks });
+  },
+
+  _autoplayNext: async () => {
+    const tracks = await get()._fetchRelated();
+    if (tracks.length > 0) {
+      const [next, ...rest] = tracks;
+      set({ autoplayQueue: rest });
+      get().playTrack(next, [next, ...rest]);
+      return;
+    }
+    get().pause();
+    set({ currentTime: 0 });
     get()._persistSession();
   },
 
@@ -596,8 +692,8 @@ const useMusicStore = create((set, get) => ({
   },
 
   _persistPrefs: () => {
-    const { volume, muted, shuffle, repeat } = get();
-    saveJson(PREFS_KEY, { volume, muted, shuffle, repeat });
+    const { volume, muted, shuffle, repeat, autoplay } = get();
+    saveJson(PREFS_KEY, { volume, muted, shuffle, repeat, autoplay });
   },
 
   _persistSession: () => {
@@ -661,6 +757,7 @@ const useMusicStore = create((set, get) => ({
       playlist: [],
       currentIndex: -1,
       queue: [],
+      autoplayQueue: [],
       isPlaying: false,
       status: 'idle',
       currentTime: 0,
