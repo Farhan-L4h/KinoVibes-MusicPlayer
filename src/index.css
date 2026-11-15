@@ -1,5 +1,11 @@
 @import './styles/tokens.css';
 
+/* Ambient light sampled from the cover art. Registered so the whole deck can
+   interpolate between tracks; transparent initial keeps surfaces monochrome. */
+@property --kv-ambient-a { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --kv-ambient-b { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --kv-ambient-c { syntax: '<color>'; inherits: true; initial-value: transparent; }
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,6 +13,10 @@
 @layer base {
   html {
     scrollbar-color: var(--kv-ink-muted) transparent;
+    transition:
+      --kv-ambient-a 900ms var(--kv-ease),
+      --kv-ambient-b 900ms var(--kv-ease),
+      --kv-ambient-c 900ms var(--kv-ease);
   }
 
   body {
@@ -84,7 +94,10 @@
   }
 
   .kv-panel {
-    background: var(--kv-panel);
+    background-color: var(--kv-panel);
+    background-image:
+      radial-gradient(120% 78% at 50% -12%, color-mix(in srgb, var(--kv-ambient-a) 17%, transparent) 0%, transparent 62%),
+      linear-gradient(0deg, color-mix(in srgb, var(--kv-ambient-a) 5%, transparent), color-mix(in srgb, var(--kv-ambient-a) 5%, transparent));
     box-shadow: var(--kv-shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   }
   .dark .kv-panel {
@@ -94,7 +107,8 @@
   .kv-card {
     border: 1px solid var(--kv-line);
     border-radius: var(--kv-radius-lg);
-    background: var(--kv-surface);
+    background-color: var(--kv-surface);
+    background-image: linear-gradient(0deg, color-mix(in srgb, var(--kv-ambient-a) 4%, transparent), color-mix(in srgb, var(--kv-ambient-a) 4%, transparent));
     box-shadow: var(--kv-shadow);
   }
 

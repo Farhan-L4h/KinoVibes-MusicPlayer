@@ -1,11 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useMusicStore } from '../../stores/music';
 
-const BARS = 56;
-
-// Stylized spectrum, not a true FFT: YouTube audio is cross-origin and HTML5
-// uploads can't be tapped without rerouting playback, so motion follows play state.
-export default function Visualizer({ className = '', bars = BARS }) {
+// Stylized oscilloscope, not a true FFT: YouTube audio is cross-origin and HTML5
+// uploads can't be tapped without rerouting playback, so the trace follows play
+// state and borrows the cover's ambient light. Calm ripple when paused.
+export default function Visualizer({ className = '' }) {
   const canvasRef = useRef(null);
   const playingRef = useRef(false);
   const kickRef = useRef(null);
@@ -23,20 +22,25 @@ export default function Visualizer({ className = '', bars = BARS }) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return undefined;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const n = Math.max(8, bars);
-    const phases = Array.from({ length: n }, (_, i) => i * 0.55 + Math.sin(i) * 2);
-    const speeds = Array.from({ length: n }, (_, i) => 0.9 + (i % 7) * 0.13);
-    const weights = Array.from({ length: n }, (_, i) => {
-      const x = i / (n - 1);
-      const d = (x - 0.26) / 0.44;
-      return 0.32 + 0.68 * Math.exp(-(d * d));
-    });
 
     let raf = 0;
     let running = false;
-    let energy = playingRef.current ? 1 : 0.12;
-    let ink = getComputedStyle(canvas).color;
+    let energy = playingRef.current ? 1 : 0.14;
     let colorTick = 0;
+    let ink = '#888';
+    let a = ink;
+    let b = ink;
+
+    const refreshColors = () => {
+      const cs = getComputedStyle(canvas);
+      ink = cs.color;
+      const pick = (name, fallback) => {
+        const v = cs.getPropertyValue(name).trim();
+        return v && v !== 'transparent' && v !== 'rgba(0, 0, 0, 0)' ? v : fallback;
+      };
+      a = pick('--kv-ambient-a', ink);
+      b = pick('--kv-ambient-b', a);
+    };
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -49,34 +53,77 @@ export default function Visualizer({ className = '', bars = BARS }) {
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       if (!w || !h) return;
-      if (colorTick++ % 30 === 0) ink = getComputedStyle(canvas).color;
+      if (colorTick++ % 30 === 0) refreshColors();
       ctx.clearRect(0, 0, w, h);
-      const gap = w > 320 ? 2 : 1.5;
-      const bw = (w - gap * (n - 1)) / n;
+      const mid = h / 2;
       const time = t / 1000;
-      const radius = Math.min(bw / 2, 2);
-      ctx.fillStyle = ink;
-      for (let i = 0; i < n; i++) {
-        const wave = 0.5 + 0.5 * Math.sin(time * speeds[i] * 2.2 + phases[i]) * Math.sin(time * 0.7 + i * 0.13);
-        const flicker = 0.82 + 0.18 * Math.sin(time * 9 + i * 1.7);
-        const level = Math.max(0.06, weights[i] * wave * flicker);
-        const bh = Math.max(2, level * energy * (h - 4));
-        const x = i * (bw + gap);
-        const y = h - bh;
-        ctx.globalAlpha = 0.26 + 0.62 * level * energy;
-        if (ctx.roundRect) {
-          ctx.beginPath();
-          ctx.roundRect(x, y, bw, bh, radius);
-          ctx.fill();
-        } else {
-          ctx.fillRect(x, y, bw, bh);
-        }
+      const amp = h * 0.36 * energy;
+      const pulse = 0.86 + 0.14 * Math.sin(time * 2.1);
+      const step = Math.max(2, Math.floor(w / 240));
+
+      const grad = ctx.createLinearGradient(0, 0, w, 0);
+      grad.addColorStop(0, a);
+      grad.addColorStop(0.5, b);
+      grad.addColorStop(1, a);
+
+      ctx.globalAlpha = 0.08;
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, mid);
+      ctx.lineTo(w, mid);
+      ctx.stroke();
+
+      const pts = [];
+      for (let x = 0; x <= w; x += step) {
+        const win = Math.pow(Math.sin(Math.PI * (x / w)), 0.85);
+        const swell = 0.78 + 0.22 * Math.sin(x * 0.006 - time * 0.9);
+        const y =
+          mid +
+          win * swell * pulse * amp *
+            (0.6 * Math.sin(x * 0.018 + time * 1.8) +
+              0.3 * Math.sin(x * 0.031 - time * 2.6 + 1.3) +
+              0.18 * Math.sin(x * 0.052 + time * 3.4 + 2.1));
+        pts.push([x, y]);
       }
+      const trace = (mirror) => {
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i += 1) {
+          const [x, y] = pts[i];
+          const yy = mirror ? 2 * mid - y : y;
+          if (i) ctx.lineTo(x, yy);
+          else ctx.moveTo(x, yy);
+        }
+      };
+
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = grad;
+      ctx.shadowBlur = 0;
+
+      ctx.globalAlpha = 0.12 * energy;
+      ctx.lineWidth = 1.5;
+      trace(true);
+      ctx.stroke();
+
+      ctx.globalAlpha = 0.12 * energy;
+      ctx.lineWidth = 6;
+      trace(false);
+      ctx.stroke();
+
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = a;
+      ctx.shadowBlur = 6 + 10 * energy;
+      trace(false);
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     };
 
     const loop = (t) => {
-      const target = playingRef.current ? 1 : 0.12;
+      const target = playingRef.current ? 1 : 0.14;
       energy += (target - energy) * 0.08;
       draw(t);
       if (!playingRef.current && Math.abs(energy - target) < 0.01) {
@@ -88,7 +135,8 @@ export default function Visualizer({ className = '', bars = BARS }) {
 
     const kick = () => {
       if (reduce) {
-        energy = playingRef.current ? 0.85 : 0.12;
+        energy = playingRef.current ? 0.85 : 0.14;
+        refreshColors();
         draw(0);
         return;
       }
@@ -99,6 +147,7 @@ export default function Visualizer({ className = '', bars = BARS }) {
     kickRef.current = kick;
 
     resize();
+    refreshColors();
     kick();
 
     const ro = new ResizeObserver(() => {
@@ -113,7 +162,7 @@ export default function Visualizer({ className = '', bars = BARS }) {
       kickRef.current = null;
       ro.disconnect();
     };
-  }, [bars]);
+  }, []);
 
   return (
     <canvas

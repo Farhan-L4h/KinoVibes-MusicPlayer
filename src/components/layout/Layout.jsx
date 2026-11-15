@@ -15,6 +15,7 @@ import VideoDeckCard from '../player/VideoDeckCard';
 import AddToPlaylistModal from '../AddToPlaylistModal';
 import PageTransition from '../PageTransition';
 import Toaster from '../ui/Toaster';
+import GlobalAmbient from '../GlobalAmbient';
 
 const Layout = () => {
   const user = useAuthStore((s) => s.user);
@@ -36,6 +37,7 @@ const Layout = () => {
 
   return (
     <div className="kv-canvas fixed inset-0 flex p-0 sm:p-4 lg:p-6">
+      <GlobalAmbient />
       <div className="kv-panel relative flex min-h-0 w-full flex-col overflow-hidden sm:rounded-kv-panel" inert={nowPlayingOpen}>
         <TopBar />
         <div className="flex min-h-0 flex-1">

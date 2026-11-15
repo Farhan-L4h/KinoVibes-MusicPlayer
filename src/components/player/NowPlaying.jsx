@@ -66,7 +66,7 @@ export default function NowPlaying() {
             <div ref={slot} key={track.id} className="kv-fade relative mx-auto aspect-square w-full max-w-[420px] overflow-hidden rounded-kv-lg bg-kv-muted shadow-kv-lg">
               {!isYt && (track.albumArt ? <img src={track.albumArt} alt={`Sampul ${track.title}`} width="420" height="420" className="h-full w-full object-cover" /> : <Music2 className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2" />)}
             </div>
-            <div className="h-14 sm:h-16"><Visualizer /></div>
+            <div className="h-20 sm:h-24"><Visualizer /></div>
             <h1 className="break-words font-body text-2xl font-bold leading-tight">{track.title}</h1>
             <p className="text-kv-ink-muted">{track.artist}</p>
             <Transport waveform />
