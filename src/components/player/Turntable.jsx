@@ -1,5 +1,6 @@
 import { useMusicStore } from '../../stores/music';
 import { cn } from '../../lib/utils';
+import TrackArt from '../TrackArt';
 
 const SCREWS = [
   'left-[3.5%] top-[4.5%]',
@@ -34,13 +35,7 @@ const Turntable = ({ track, className }) => {
           <div className="kv-vinyl-sheen" />
           <div className="kv-vinyl-label">
             {track?.albumArt ? (
-              <img
-                src={track.albumArt}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="h-full w-full object-cover"
-              />
+              <TrackArt src={track.albumArt} videoId={track.videoId} />
             ) : (
               <span className="font-mono text-[9px] font-bold tracking-[0.2em] text-kv-ink/80">
                 33⅓ RPM

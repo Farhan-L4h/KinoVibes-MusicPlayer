@@ -10,6 +10,7 @@ import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import Button from '../components/ui/Button';
 import SeekSlider from '../components/player/SeekSlider';
+import TrackArt from '../components/TrackArt';
 
 const LyricsPage = () => {
   const track = useMusicStore((s) => s.currentTrack);
@@ -65,7 +66,7 @@ const LyricsPage = () => {
           >
             {!isYt &&
               (track.albumArt ? (
-                <img src={track.albumArt} alt={`Sampul ${track.album || track.title}`} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                <TrackArt src={track.albumArt} videoId={track.videoId} alt={`Sampul ${track.album || track.title}`} />
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-kv-surface-muted">
                   <Music2 size={64} className="text-kv-ink-muted" aria-hidden="true" />

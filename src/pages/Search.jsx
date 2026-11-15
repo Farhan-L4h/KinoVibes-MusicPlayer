@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth';
 import { searchYouTube, suggestYouTube, ytItemToTrack } from '../services/ytApi';
 import { searchMusic } from '../services/supabaseMusicApi';
 import TrackRow from '../components/TrackRow';
+import TrackArt from '../components/TrackArt';
 import Tabs from '../components/ui/Tabs';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
@@ -45,7 +46,15 @@ const BrowseCard = ({ item, onClick }) => (
     className="group min-w-0 rounded-kv border border-kv-line bg-kv-surface p-3 text-left transition-colors hover:border-kv-ink"
   >
     <span className={`relative mb-3 block aspect-square w-full overflow-hidden border border-kv-line bg-kv-muted ${item.type === 'artist' ? 'rounded-full' : 'rounded-kv'}`}>
-      {item.thumbnail ? (
+      {item.videoId ? (
+        <TrackArt
+          src={item.thumbnail}
+          videoId={item.videoId}
+          small
+          imgClassName="h-full w-full object-cover grayscale group-hover:grayscale-0 group-focus-visible:grayscale-0"
+          placeholderSize={44}
+        />
+      ) : item.thumbnail ? (
         <img src={item.thumbnail} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover grayscale group-hover:grayscale-0 group-focus-visible:grayscale-0" />
       ) : (
         <span className="flex h-full w-full items-center justify-center bg-kv-muted">

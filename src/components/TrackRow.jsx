@@ -1,10 +1,11 @@
-import { Play, Heart, Music2, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { Play, Heart, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { useMusicStore } from '../stores/music';
 import { useFavoritesStore } from '../stores/favorites';
 import { useTrackActions } from '../hooks/useTrackActions';
 import { formatTime, cn } from '../lib/utils';
 import EqBars from './ui/EqBars';
 import TrackMenu from './TrackMenu';
+import TrackArt from './TrackArt';
 
 const TrackRow = ({
   track,
@@ -60,13 +61,7 @@ const TrackRow = ({
         className="flex min-w-0 flex-[2] items-center gap-3 text-left"
       >
         <span className="block h-12 w-12 shrink-0 overflow-hidden rounded-kv border border-kv-line bg-kv-muted">
-          {track.albumArt ? (
-            <img src={track.albumArt} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center text-kv-ink-muted">
-              <Music2 size={18} />
-            </span>
-          )}
+          <TrackArt src={track.albumArt} videoId={track.videoId} small placeholderSize={18} />
         </span>
         <span className="min-w-0">
           <span className="flex items-center gap-2">

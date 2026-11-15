@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ListPlus, Plus, Loader2, Music2 } from 'lucide-react';
+import { ListPlus, Plus, Loader2 } from 'lucide-react';
 import Modal from './ui/Modal';
 import Button from './ui/Button';
 import Input from './ui/Input';
 import EmptyState from './ui/EmptyState';
+import TrackArt from './TrackArt';
 import { useModalStore } from '../stores/modals';
 import { usePlaylistStore } from '../stores/playlist';
 import { useAuthStore } from '../stores/auth';
@@ -73,13 +74,7 @@ const AddToPlaylistModal = () => {
         <div className="space-y-4">
           <div className="flex items-center gap-3 rounded-kv border border-kv-line bg-kv-panel p-2.5">
             <span className="block h-10 w-10 shrink-0 overflow-hidden rounded border border-kv-line bg-kv-surface">
-              {track.albumArt ? (
-                <img src={track.albumArt} alt="" decoding="async" className="h-full w-full object-cover" />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center">
-                  <Music2 size={16} />
-                </span>
-              )}
+              <TrackArt src={track.albumArt} videoId={track.videoId} small placeholderSize={16} />
             </span>
             <span className="min-w-0">
               <span className="block truncate text-sm font-bold">{track.title}</span>

@@ -1,4 +1,5 @@
-import { ListMusic, X, Music2, Trash2, Radio, ArrowUp, ArrowDown } from 'lucide-react';
+import { ListMusic, X, Trash2, Radio, ArrowUp, ArrowDown } from 'lucide-react';
+import TrackArt from '../TrackArt';
 import { useMusicStore } from '../../stores/music';
 import { formatTime, cn } from '../../lib/utils';
 import EmptyState from '../ui/EmptyState';
@@ -7,61 +8,61 @@ import EqBars from '../ui/EqBars';
 const Row = ({ track, active, playing, onPlay, onRemove, removeLabel, reorder }) => (
   <div
     className={cn(
-      'flex items-center gap-2 rounded-kv border px-3 py-2 transition-colors',
+      'kv-queue-row flex items-center gap-2 rounded-kv border px-2.5 py-2 transition-colors',
       active ? 'border-kv-line bg-kv-muted' : 'border-transparent hover:bg-kv-muted'
     )}
   >
     <button type="button" onClick={onPlay} className="flex min-w-0 flex-1 items-center gap-3 text-left">
       <span className="block h-9 w-9 shrink-0 overflow-hidden rounded-md bg-kv-surface-muted">
-        {track.albumArt ? (
-          <img src={track.albumArt} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-        ) : (
-          <span className="flex h-full w-full items-center justify-center text-kv-ink-muted">
-            <Music2 size={14} />
-          </span>
-        )}
+        <TrackArt src={track.albumArt} videoId={track.videoId} small placeholderSize={14} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-bold">{track.title}</span>
         <span className="block truncate font-mono text-xs text-kv-ink-muted">{track.artist}</span>
       </span>
       {active && <EqBars playing={playing} />}
-      <span className="shrink-0 font-mono text-xs text-kv-ink-muted">{formatTime(track.duration)}</span>
     </button>
-    {reorder && (
-      <span className="flex shrink-0 items-center">
-        <button
-          type="button"
-          onClick={reorder.onUp}
-          disabled={!reorder.canUp}
-          aria-label="Naikkan urutan"
-          title="Naikkan urutan"
-          className="flex h-8 w-7 items-center justify-center rounded-full text-kv-ink-muted transition-colors hover:bg-kv-surface hover:text-kv-ink disabled:opacity-30 disabled:hover:bg-transparent"
-        >
-          <ArrowUp size={13} />
-        </button>
-        <button
-          type="button"
-          onClick={reorder.onDown}
-          disabled={!reorder.canDown}
-          aria-label="Turunkan urutan"
-          title="Turunkan urutan"
-          className="flex h-8 w-7 items-center justify-center rounded-full text-kv-ink-muted transition-colors hover:bg-kv-surface hover:text-kv-ink disabled:opacity-30 disabled:hover:bg-transparent"
-        >
-          <ArrowDown size={13} />
-        </button>
+    <span className="w-11 shrink-0 text-right font-mono text-xs tabular-nums text-kv-ink-muted">
+      {formatTime(track.duration)}
+    </span>
+    {(reorder || onRemove) && (
+      <span className="flex shrink-0 items-center gap-0.5">
+        {reorder && (
+          <span className="kv-queue-reorder flex items-center">
+            <button
+              type="button"
+              onClick={reorder.onUp}
+              disabled={!reorder.canUp}
+              aria-label="Naikkan urutan"
+              title="Naikkan urutan"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-kv-ink-muted transition-colors hover:bg-kv-surface hover:text-kv-ink disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <ArrowUp size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={reorder.onDown}
+              disabled={!reorder.canDown}
+              aria-label="Turunkan urutan"
+              title="Turunkan urutan"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-kv-ink-muted transition-colors hover:bg-kv-surface hover:text-kv-ink disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <ArrowDown size={13} />
+            </button>
+          </span>
+        )}
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label={removeLabel}
+            title={removeLabel}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-kv-ink-muted transition-colors hover:bg-kv-surface hover:text-kv-red"
+          >
+            <X size={14} />
+          </button>
+        )}
       </span>
-    )}
-    {onRemove && (
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label={removeLabel}
-        title={removeLabel}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-kv-ink-muted transition-colors hover:bg-kv-surface hover:text-kv-red"
-      >
-        <X size={14} />
-      </button>
     )}
   </div>
 );

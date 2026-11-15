@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { ChevronDown, Heart, ListPlus, Download, Music2 } from 'lucide-react';
+import { ChevronDown, Heart, ListPlus, Download } from 'lucide-react';
+import TrackArt from '../TrackArt';
 import { useMusicStore } from '../../stores/music';
 import { useFavoritesStore } from '../../stores/favorites';
 import { useTrackActions } from '../../hooks/useTrackActions';
@@ -64,11 +65,13 @@ export default function NowPlaying() {
         <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-14">
           <div className="space-y-5">
             <div ref={slot} key={track.id} className="kv-fade relative mx-auto aspect-square w-full max-w-[420px] overflow-hidden rounded-kv-lg bg-kv-muted shadow-kv-lg">
-              {!isYt && (track.albumArt ? <img src={track.albumArt} alt={`Sampul ${track.title}`} width="420" height="420" className="h-full w-full object-cover" /> : <Music2 className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2" />)}
+              {!isYt && <TrackArt src={track.albumArt} videoId={track.videoId} alt={`Sampul ${track.title}`} placeholderClassName="absolute inset-0 flex items-center justify-center text-kv-ink-muted" placeholderSize={80} />}
             </div>
             <div className="h-20 sm:h-24"><Visualizer /></div>
-            <h1 className="break-words font-body text-2xl font-bold leading-tight">{track.title}</h1>
-            <p className="text-kv-ink-muted">{track.artist}</p>
+            <div key={track.id} className="kv-fade space-y-5">
+              <h1 className="break-words font-body text-2xl font-bold leading-tight">{track.title}</h1>
+              <p className="text-kv-ink-muted">{track.artist}</p>
+            </div>
             <Transport waveform />
             <div className="flex justify-center gap-2">
               <IconButton label="Tambah ke playlist" onClick={() => actions.openAddToPlaylist(track)}><ListPlus size={20} /></IconButton>

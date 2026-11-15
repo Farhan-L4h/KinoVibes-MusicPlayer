@@ -209,7 +209,7 @@ const LyricsView = ({ compact = false }) => {
         )}
 
         {state === 'ready' && lyrics?.synced?.length > 0 && (
-          <div className="space-y-1 py-[35%] sm:py-[25%]">
+          <div className="kv-fade space-y-1 py-[35%] sm:py-[25%]">
             {lyrics.synced.map((line, i) => {
               const active = i === activeIndex;
               const passed = i < activeIndex;
@@ -235,7 +235,7 @@ const LyricsView = ({ compact = false }) => {
         )}
 
         {state === 'ready' && !lyrics?.synced?.length && lyrics?.plain && (
-          <pre className="whitespace-pre-wrap font-body text-base leading-relaxed">{lyrics.plain}</pre>
+          <pre className="kv-fade whitespace-pre-wrap font-body text-base leading-relaxed">{lyrics.plain}</pre>
         )}
       </div>
       </div>

@@ -1,10 +1,12 @@
 import { supabase, uploadFile, deleteFile, getSignedUrl, BUCKETS } from '../config/supabase';
+import { ytArt } from './ytApi';
 
 const YT_PATH_PREFIX = 'youtube:';
 
 export const transformMusicData = (dbRow) => {
   if (!dbRow) return null;
   const isYt = dbRow.source === 'youtube';
+  const videoId = isYt ? (dbRow.audio_path || '').replace(YT_PATH_PREFIX, '') : null;
   return {
     id: dbRow.id,
     userId: dbRow.user_id,
@@ -16,14 +18,15 @@ export const transformMusicData = (dbRow) => {
     duration: dbRow.duration,
     audioUrl: dbRow.audio_url,
     audioPath: dbRow.audio_path,
-    albumArt: dbRow.album_art,
+    // Older YouTube rows stored a 120px sliver; the video frame is canonical.
+    albumArt: isYt ? (ytArt(videoId) || dbRow.album_art) : dbRow.album_art,
     albumArtPath: dbRow.album_art_path,
     lyricsUrl: dbRow.lyrics_url,
     lyricsPath: dbRow.lyrics_path,
     fileName: dbRow.file_name,
     fileSize: dbRow.file_size,
     source: isYt ? 'youtube' : 'upload',
-    videoId: isYt ? (dbRow.audio_path || '').replace(YT_PATH_PREFIX, '') : null,
+    videoId,
     playCount: dbRow.play_count || 0,
     isFullTrack: dbRow.is_full_track,
     createdAt: dbRow.created_at,

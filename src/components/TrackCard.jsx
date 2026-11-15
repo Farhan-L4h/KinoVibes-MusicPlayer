@@ -1,4 +1,5 @@
-import { Play, Music2 } from 'lucide-react';
+import { Play } from 'lucide-react';
+import TrackArt from './TrackArt';
 import { useMusicStore } from '../stores/music';
 import EqBars from './ui/EqBars';
 
@@ -10,11 +11,7 @@ const TrackCard = ({ track, onPlay, width = 'w-40 sm:w-44' }) => {
   return (
     <button type="button" onClick={onPlay} aria-label={`Putar ${track.title} dari ${track.artist}`} className={`kv-lift group ${width} shrink-0 overflow-hidden rounded-kv border border-kv-line bg-kv-surface text-left transition-colors hover:border-kv-ink`}>
       <span className="relative block aspect-square w-full overflow-hidden bg-kv-muted">
-        {track.albumArt ? (
-          <img src={track.albumArt} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover grayscale transition-[filter] group-hover:grayscale-0 group-focus-visible:grayscale-0" />
-        ) : (
-          <span className="flex h-full w-full items-center justify-center text-kv-ink-muted"><Music2 size={36} /></span>
-        )}
+        <TrackArt src={track.albumArt} videoId={track.videoId} small imgClassName="h-full w-full object-cover grayscale transition-[filter] group-hover:grayscale-0 group-focus-visible:grayscale-0" placeholderSize={36} />
         <span className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-kv-panel text-kv-ink shadow-sm">
           {active && isPlaying ? <EqBars /> : <Play size={15} className="ml-0.5" />}
         </span>

@@ -50,6 +50,17 @@ const VideoDock = () => {
       host.style.height = `${r.height}px`;
       host.style.borderRadius = getComputedStyle(slot).borderRadius;
       host.style.zIndex = useMusicStore.getState().nowPlayingOpen ? '60' : '30';
+      // Cover-crop the 16:9 frame into the (often square) slot so no black
+      // letterbox bars show; keep the iframe itself >=200x200 for YouTube ToS.
+      const frame = frameRef.current;
+      if (frame) {
+        const fh = Math.max(r.height, (r.width * 9) / 16, 200);
+        const fw = (fh * 16) / 9;
+        frame.style.width = `${fw}px`;
+        frame.style.height = `${fh}px`;
+        frame.style.left = `${(r.width - fw) / 2}px`;
+        frame.style.top = `${(r.height - fh) / 2}px`;
+      }
       setHasSlot(true);
     };
     const schedule = () => {
@@ -100,7 +111,7 @@ const VideoDock = () => {
       className="pointer-events-none fixed overflow-hidden bg-black"
       style={{ display: hasSlot ? 'block' : 'none' }}
     >
-      <div ref={frameRef} className="h-full w-full [&_iframe]:h-full [&_iframe]:w-full" />
+      <div ref={frameRef} className="absolute [&_iframe]:h-full [&_iframe]:w-full" />
       <button
         type="button"
         aria-label="Jeda atau putar video"

@@ -40,6 +40,9 @@ const requestJson = async (url, controller, signal) => {
   }
 };
 
+// Full-res 16:9 video frame; object-cover crops it to a clean square poster.
+export const ytArt = (videoId) => (videoId ? `https://i.ytimg.com/vi/${videoId}/hq720.jpg` : null);
+
 export const ytItemToTrack = (item) => ({
   id: `yt:${item.videoId}`,
   source: 'youtube',
@@ -48,7 +51,7 @@ export const ytItemToTrack = (item) => ({
   artist: item.artist || 'Unknown Artist',
   album: item.album || null,
   duration: item.duration || 0,
-  albumArt: item.thumbnail || null,
+  albumArt: ytArt(item.videoId) || item.thumbnail || null,
   audioUrl: null,
 });
 
