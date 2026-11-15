@@ -358,7 +358,6 @@
     color: var(--kv-ink);
   }
 
-  .kv-lyric-stage .kv-mesh { opacity: 0.38; }
   .kv-lyric-stage:focus-within .kv-lyric-line,
   .kv-lyric-stage:hover .kv-lyric-line { filter: none; }
 
@@ -415,8 +414,73 @@
       radial-gradient(30% 34% at 58% 18%, var(--mesh-c, #303030) 0%, transparent 70%);
     filter: blur(48px) saturate(1.15);
     contain: paint;
-    opacity: 0.85;
+    opacity: var(--mesh-opacity, 0.85);
+    animation: kv-drift 32s ease-in-out infinite alternate;
+    will-change: transform;
   }
+
+  @keyframes kv-drift {
+    0% { transform: translate3d(-2%, -1%, 0) scale(1); }
+    50% { transform: translate3d(2%, 2%, 0) scale(1.07); }
+    100% { transform: translate3d(-1%, 1%, 0) scale(1.02); }
+  }
+
+  /* Fine film grain so the ambient light reads as material, not a flat wash. */
+  .kv-grain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Vignette keeps lyric text legible over the drifting light. */
+  .kv-lyric-stage::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background: radial-gradient(120% 90% at 50% 45%, transparent 40%, rgb(0 0 0 / 0.42) 100%);
+  }
+
+  /* ---- motion: restraint for lists, polish for the player stage ---- */
+  .kv-rise {
+    animation: kv-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes kv-rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .kv-stagger > * { animation: kv-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .kv-stagger > *:nth-child(1) { animation-delay: 0.02s; }
+  .kv-stagger > *:nth-child(2) { animation-delay: 0.06s; }
+  .kv-stagger > *:nth-child(3) { animation-delay: 0.1s; }
+  .kv-stagger > *:nth-child(4) { animation-delay: 0.14s; }
+  .kv-stagger > *:nth-child(5) { animation-delay: 0.18s; }
+  .kv-stagger > *:nth-child(6) { animation-delay: 0.22s; }
+  .kv-stagger > *:nth-child(n+7) { animation-delay: 0.26s; }
+
+  .kv-pop { animation: kv-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  @keyframes kv-pop {
+    from { opacity: 0; transform: scale(0.985) translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .kv-fade { animation: kv-fade 0.4s ease both; }
+  @keyframes kv-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .kv-lift {
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+  }
+  .kv-lift:hover { transform: translateY(-3px); }
+  .kv-lift:active { transform: translateY(-1px); }
 
   .kv-shimmer {
     position: relative;

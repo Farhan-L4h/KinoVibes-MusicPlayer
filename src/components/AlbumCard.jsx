@@ -2,7 +2,7 @@ import { Disc3, Play } from 'lucide-react';
 
 const AlbumCard = ({ album, onClick, onPlay }) => (
   <div className="group relative min-w-0">
-    <button type="button" onClick={onClick} className="block w-full overflow-hidden rounded-kv border border-kv-line bg-kv-surface text-left transition-colors hover:border-kv-ink" aria-label={`Buka album ${album.name}`}>
+    <button type="button" onClick={onClick} className="kv-lift block w-full overflow-hidden rounded-kv border border-kv-line bg-kv-surface text-left transition-colors hover:border-kv-ink" aria-label={`Buka album ${album.name}`}>
       <span className="relative block aspect-square w-full overflow-hidden bg-kv-muted">
         {album.coverArt ? (
           <img src={album.coverArt} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover grayscale transition-[filter] group-hover:grayscale-0 group-focus-within:grayscale-0" />

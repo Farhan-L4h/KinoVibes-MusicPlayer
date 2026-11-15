@@ -8,7 +8,7 @@ const TrackCard = ({ track, onPlay, width = 'w-40 sm:w-44' }) => {
   const active = currentTrack?.id === track.id || (!!track.videoId && currentTrack?.videoId === track.videoId);
 
   return (
-    <button type="button" onClick={onPlay} aria-label={`Putar ${track.title} dari ${track.artist}`} className={`group ${width} shrink-0 overflow-hidden rounded-kv border border-kv-line bg-kv-surface text-left transition-colors hover:border-kv-ink`}>
+    <button type="button" onClick={onPlay} aria-label={`Putar ${track.title} dari ${track.artist}`} className={`kv-lift group ${width} shrink-0 overflow-hidden rounded-kv border border-kv-line bg-kv-surface text-left transition-colors hover:border-kv-ink`}>
       <span className="relative block aspect-square w-full overflow-hidden bg-kv-muted">
         {track.albumArt ? (
           <img src={track.albumArt} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover grayscale transition-[filter] group-hover:grayscale-0 group-focus-visible:grayscale-0" />

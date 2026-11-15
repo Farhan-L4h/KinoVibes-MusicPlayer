@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/auth';
 import { useMusicStore } from '../../stores/music';
 import { useFavoritesStore } from '../../stores/favorites';
@@ -11,6 +11,7 @@ import MobileNav from './MobileNav';
 import MiniPlayer from '../player/MiniPlayer';
 const NowPlaying = lazy(() => import('../player/NowPlaying'));
 import VideoDock from '../player/VideoDock';
+import VideoDeckCard from '../player/VideoDeckCard';
 import AddToPlaylistModal from '../AddToPlaylistModal';
 import PageTransition from '../PageTransition';
 import Toaster from '../ui/Toaster';
@@ -18,6 +19,9 @@ import Toaster from '../ui/Toaster';
 const Layout = () => {
   const user = useAuthStore((s) => s.user);
   const nowPlayingOpen = useMusicStore((s) => s.nowPlayingOpen);
+  const currentTrack = useMusicStore((s) => s.currentTrack);
+  const { pathname } = useLocation();
+  const showDeckCard = currentTrack?.source === 'youtube' && !nowPlayingOpen && pathname !== '/';
   useKeyboardShortcuts();
 
   useEffect(() => {
@@ -36,7 +40,8 @@ const Layout = () => {
         <TopBar />
         <div className="flex min-h-0 flex-1">
           <Sidebar />
-          <main className="kv-scroll min-w-0 flex-1 overflow-y-auto px-4 pb-10 pt-2 sm:px-7 sm:pt-4">
+          <main className="kv-scroll min-w-0 flex-1 overflow-y-auto px-4 pb-8 pt-2 sm:px-7 sm:pt-3">
+            {showDeckCard && <VideoDeckCard />}
             <PageTransition>
               <Suspense fallback={<p role="status" className="py-12 text-center">Memuat halaman…</p>}><Outlet /></Suspense>
             </PageTransition>

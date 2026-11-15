@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Upload, Mic2, ArrowRight, Heart, ListMusic, Library as LibraryIcon } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
 import { useMusicStore, getRecentTracks } from '../stores/music';
 import { usePlaylistStore } from '../stores/playlist';
 import { useFavoritesStore } from '../stores/favorites';
-import { getUserMusic, transformMusicData } from '../services/supabaseMusicApi';
+import { getUserMusic, transformMusicData, getTopPlayed } from '../services/supabaseMusicApi';
 import { getUserAlbums, buildAlbumList, sortAlbums, getAlbumTracks } from '../services/albumApi';
 import { useTrackActions } from '../hooks/useTrackActions';
+import { registerVideoSlot, unregisterVideoSlot } from '../player/videoSlot';
 import Turntable from '../components/player/Turntable';
+import Ambient from '../components/Ambient';
 import Transport from '../components/player/Transport';
 import TrackCard from '../components/TrackCard';
 import TrackRow from '../components/TrackRow';
@@ -31,12 +33,15 @@ const Home = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const currentTrack = useMusicStore((s) => s.currentTrack);
+  const nowPlayingOpen = useMusicStore((s) => s.nowPlayingOpen);
+  const deckRef = useRef(null);
   const { playlists, loading: playlistsLoading, error: playlistsError, loadUserPlaylists } = usePlaylistStore();
   const favorites = useFavoritesStore((s) => s.tracks);
   const favoritesLoadedFor = useFavoritesStore((s) => s.loadedFor);
   const isFavorite = useFavoritesStore((s) => s.isFavorite);
   const actions = useTrackActions();
   const [tracks, setTracks] = useState([]);
+  const [topPlayed, setTopPlayed] = useState([]);
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,9 +55,14 @@ const Home = () => {
       setLoading(true);
       setError('');
       try {
-        const [music, albumRows] = await Promise.all([getUserMusic(user.id), getUserAlbums(user.id).catch(() => [])]);
+        const [music, albumRows, played] = await Promise.all([
+          getUserMusic(user.id),
+          getUserAlbums(user.id).catch(() => []),
+          getTopPlayed(user.id).catch(() => []),
+        ]);
         if (cancelled) return;
         setTracks(music);
+        setTopPlayed(played);
         setAlbums(sortAlbums(buildAlbumList(albumRows, music), 'newest'));
       } catch {
         if (!cancelled) setError('Library belum bisa dimuat. Periksa koneksi lalu coba lagi.');
@@ -65,6 +75,34 @@ const Home = () => {
 
   const recent = useMemo(() => getRecentTracks(), [currentTrack?.id]);
   const liked = currentTrack && isFavorite(currentTrack);
+
+  useEffect(() => {
+    if (currentTrack?.source !== 'youtube' || nowPlayingOpen) return undefined;
+    const el = deckRef.current;
+    registerVideoSlot(el, 2);
+    return () => unregisterVideoSlot(el);
+  }, [currentTrack?.source, currentTrack?.id, nowPlayingOpen]);
+  const frequent = useMemo(() => topPlayed.slice(0, 8), [topPlayed]);
+  const recommendations = useMemo(() => {
+    if (!topPlayed.length) return [];
+    const seeds = topPlayed.slice(0, 5);
+    const artists = new Set(seeds.map((t) => (t.artist || '').toLowerCase()).filter(Boolean));
+    const genres = new Set(seeds.map((t) => (t.genre || '').toLowerCase()).filter(Boolean));
+    const frequentIds = new Set(topPlayed.map((t) => t.id));
+    return tracks
+      .filter((t) => t.id !== currentTrack?.id && !frequentIds.has(t.id))
+      .map((t) => {
+        let score = 0;
+        if (artists.has((t.artist || '').toLowerCase())) score += 2;
+        if (genres.has((t.genre || '').toLowerCase())) score += 1;
+        return { t, score };
+      })
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score || (b.t.playCount || 0) - (a.t.playCount || 0))
+      .slice(0, 8)
+      .map((x) => x.t);
+  }, [topPlayed, tracks, currentTrack?.id]);
+
   const playAlbum = async (album) => {
     try {
       const rows = await getAlbumTracks(user.id, album.name);
@@ -76,13 +114,16 @@ const Home = () => {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)] lg:gap-10">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)] lg:gap-8">
         <section className="min-w-0 lg:border-r lg:border-kv-line lg:pr-8" aria-label="Pemutar musik">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
             <p className="font-mono text-xs text-kv-ink-muted">Sesi musik {displayName}</p>
             <Link to="/library" className="inline-flex min-h-11 items-center text-xs text-kv-ink-muted hover:text-kv-ink hover:underline">Library kamu</Link>
           </div>
-          <div inert={!currentTrack} aria-hidden={!currentTrack}><Turntable track={currentTrack} /></div>
+          <div className="relative isolate -m-3 overflow-hidden rounded-kv-lg p-3" inert={!currentTrack} aria-hidden={!currentTrack}>
+            <Ambient url={currentTrack?.albumArt} opacity={0.4} />
+            <div ref={deckRef} className="relative z-10"><Turntable track={currentTrack} /></div>
+          </div>
           {currentTrack ? (
             <div className="mt-6">
               <p className="font-mono text-[11px] text-kv-ink-muted">Pilihan saat ini</p>
@@ -108,7 +149,7 @@ const Home = () => {
           )}
         </section>
 
-        <div className="min-w-0 space-y-8">
+        <div className="kv-stagger min-w-0 space-y-6">
           <section>
             <p className="mb-3 font-mono text-xs text-kv-ink-muted">Music Categories</p>
             <h2 className="font-display text-xl leading-relaxed sm:text-2xl">Musik untuk<br className="hidden sm:block" /> suasana hari ini.</h2>
@@ -119,11 +160,24 @@ const Home = () => {
           <section>
             <SectionHeader title="Baru diputar" />
             {recent.length ? (
-              <div className="flex gap-3 overflow-x-auto pb-3">{recent.map((t) => <TrackCard key={t.id} track={t} width="w-32 sm:w-36" onPlay={() => actions.play(t, recent)} />)}</div>
+              <div className="flex gap-3 overflow-x-auto pb-3">{recent.map((t) => <TrackCard key={t.id} track={t} width="w-28 sm:w-32" onPlay={() => actions.play(t, recent)} />)}</div>
             ) : (
               <div className="rounded-kv border border-kv-line p-4"><p className="text-sm text-kv-ink-muted">Lagu yang kamu putar akan muncul di sini.</p><Link to="/search" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">Cari musik pertama</Link></div>
             )}
           </section>
+          {frequent.length > 0 && (
+            <section className="kv-rise">
+              <SectionHeader title="Sering kamu putar" />
+              <div className="flex gap-3 overflow-x-auto pb-3">{frequent.map((t) => <TrackCard key={t.id} track={t} width="w-28 sm:w-32" onPlay={() => actions.play(t, frequent)} />)}</div>
+            </section>
+          )}
+          {recommendations.length > 0 && (
+            <section className="kv-rise">
+              <SectionHeader title="Rekomendasi untukmu" />
+              <p className="-mt-2 mb-3 text-xs text-kv-ink-muted">Dari artis dan genre yang paling sering kamu putar.</p>
+              <div className="flex gap-3 overflow-x-auto pb-3">{recommendations.map((t) => <TrackCard key={t.id} track={t} width="w-28 sm:w-32" onPlay={() => actions.play(t, recommendations)} />)}</div>
+            </section>
+          )}
           <section>
             <SectionHeader title="Koleksi pilihanmu" to="/playlists" />
             <div className="divide-y divide-kv-line">

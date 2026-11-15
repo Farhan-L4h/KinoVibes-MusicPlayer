@@ -3,7 +3,7 @@ import { Mic2, RefreshCw, Pencil, Minus, Plus, Loader2, RotateCcw } from 'lucide
 import { useMusicStore } from '../stores/music';
 import { useAuthStore } from '../stores/auth';
 import { fetchLyrics, getLyricsOffset, setLyricsOffset } from '../services/lyricsApi';
-import { useArtColors } from '../hooks/useArtColors';
+import Ambient from './Ambient';
 import Badge from './ui/Badge';
 import EmptyState from './ui/EmptyState';
 import Button from './ui/Button';
@@ -22,7 +22,6 @@ const LyricsView = ({ compact = false }) => {
   const lineRefs = useRef([]);
   const manualScrollAt = useRef(0);
   const requestId = useRef(0);
-  const colors = useArtColors(track?.albumArt);
   const [follow, setFollow] = useState(true);
 
   const load = useCallback(
@@ -165,8 +164,8 @@ const LyricsView = ({ compact = false }) => {
         </div>
       )}
 
-      <div className="kv-lyric-stage relative min-h-0 flex-1 overflow-hidden rounded-kv-lg" style={{ '--mesh-a': colors?.a, '--mesh-b': colors?.b, '--mesh-c': colors?.c }}>
-      <div className="kv-mesh" aria-hidden="true" />
+      <div className="kv-lyric-stage kv-grain relative isolate min-h-0 flex-1 overflow-hidden rounded-kv-lg">
+      <Ambient url={track?.albumArt} opacity={0.5} />
       <div
         ref={containerRef}
         onWheel={() => setFollow(false)}
@@ -175,7 +174,7 @@ const LyricsView = ({ compact = false }) => {
         tabIndex={0}
         role="region"
         aria-label="Lirik lagu"
-        className={`kv-lyrics kv-scroll relative h-full min-h-[300px] overflow-y-auto px-4 ${compact ? 'max-h-[52vh]' : 'max-h-[65vh]'}`}
+        className={`kv-lyrics kv-scroll relative z-10 h-full min-h-[300px] overflow-y-auto px-4 ${compact ? 'max-h-[52vh]' : 'max-h-[65vh]'}`}
       >
         {state === 'loading' && (
           <div className="space-y-4 py-4">

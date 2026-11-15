@@ -107,6 +107,20 @@ export const getUserMusic = async (userId) => {
   return (data || []).map(transformMusicData);
 };
 
+// Seeds the "frequently played" row and the recommendation matcher. Includes
+// YouTube rows so saved streams can be recommended too.
+export const getTopPlayed = async (userId, limit = 12) => {
+  const { data, error } = await supabase
+    .from('music_library')
+    .select('*')
+    .eq('user_id', userId)
+    .gt('play_count', 0)
+    .order('play_count', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data || []).map(transformMusicData);
+};
+
 export const getAllMusic = async (userId) => {
   if (userId) return getUserMusic(userId);
   const { data, error } = await supabase
