@@ -9,7 +9,7 @@ import IconButton from '../components/ui/IconButton';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import Button from '../components/ui/Button';
-import Slider from '../components/ui/Slider';
+import SeekSlider from '../components/player/SeekSlider';
 
 const LyricsPage = () => {
   const track = useMusicStore((s) => s.currentTrack);
@@ -32,11 +32,11 @@ const LyricsPage = () => {
   if (!track) {
     return (
       <div className="mx-auto max-w-3xl">
-        <h1 className="mb-6 font-display text-3xl uppercase sm:text-4xl">Lirik</h1>
+        <h1 className="mb-6 font-display text-2xl leading-relaxed sm:text-3xl">Lirik</h1>
         <EmptyState
           icon={Mic2}
           title="Belum ada lagu diputar"
-          description="Cari dan putar lagu dulu — lirik tersinkron akan tampil di sini otomatis."
+          description="Cari dan putar lagu dulu. Lirik tersinkron akan tampil di sini otomatis."
           action={
             <Link to="/search">
               <Button size="sm"><Search size={15} /> Cari lagu</Button>
@@ -47,55 +47,49 @@ const LyricsPage = () => {
     );
   }
 
-  const { togglePlay, nextTrack, previousTrack, seekTo } = useMusicStore.getState();
+  const { togglePlay, nextTrack, previousTrack } = useMusicStore.getState();
   const loading = status === 'loading' || status === 'buffering';
 
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-5 flex flex-wrap items-center gap-3">
-        <h1 className="font-display text-3xl uppercase sm:text-4xl">Lirik</h1>
-        {isYt ? <Badge tone="pink">YouTube</Badge> : <Badge tone="blue">Upload</Badge>}
+        <h1 className="font-display text-2xl leading-relaxed sm:text-3xl">Lirik</h1>
+        {isYt ? <Badge tone="ink">YouTube</Badge> : <Badge>Upload</Badge>}
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
-        <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+        <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <div
             ref={slotRef}
-            className="kv-stripes relative aspect-square w-full overflow-hidden rounded-kv-lg border-3 border-kv-ink bg-kv-muted shadow-kv-lg"
+            className="relative aspect-square w-full overflow-hidden rounded-kv-lg border border-kv-line bg-kv-muted shadow-kv-lg"
           >
             {!isYt &&
               (track.albumArt ? (
-                <img src={track.albumArt} alt={`Sampul ${track.album || track.title}`} className="h-full w-full object-cover" />
+                <img src={track.albumArt} alt={`Sampul ${track.album || track.title}`} loading="lazy" decoding="async" className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-kv-blue">
-                  <Music2 size={64} className="text-[#0a0a0a]" />
-                  <span className="font-display text-xs uppercase tracking-widest text-[#0a0a0a]">KinoVibe</span>
+                <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-kv-surface-muted">
+                  <Music2 size={64} className="text-kv-ink-muted" aria-hidden="true" />
+                  <span className="font-mono text-[11px] font-bold tracking-[0.2em] text-kv-ink-muted">KINOVIBE</span>
                 </div>
               ))}
             {isYt && (
               <span className="absolute bottom-2 left-2">
-                <Badge tone="pink">▶ Video YouTube</Badge>
+                <Badge tone="ink">Video YouTube</Badge>
               </span>
             )}
           </div>
 
           <div className="kv-card p-4">
-            <h2 className="truncate font-display text-lg uppercase leading-tight">{track.title}</h2>
-            <p className="truncate text-sm font-semibold text-kv-ink-muted">{track.artist}</p>
-            <div className="mt-3">
-              <Slider
-                value={Math.floor(currentTime)}
-                max={Math.max(1, Math.floor(duration))}
-                onChange={(e) => seekTo(Number(e.target.value))}
-                fill="var(--kv-pink)"
-                aria-label="Posisi lagu"
-              />
-              <div className="mt-1 flex justify-between font-mono text-[11px] font-bold text-kv-ink-muted">
+            <h2 className="break-words font-display text-lg leading-relaxed">{track.title}</h2>
+            <p className="mt-1 truncate text-sm text-kv-ink-muted">{track.artist}</p>
+            <div className="mt-4">
+              <SeekSlider />
+              <div className="mt-1 flex justify-between font-mono text-[11px] tabular-nums text-kv-ink-muted">
                 <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(duration)}</span>
               </div>
             </div>
-            <div className="mt-3 flex items-center justify-center gap-3">
+            <div className="mt-4 flex items-center justify-center gap-3">
               <IconButton label="Lagu sebelumnya" onClick={previousTrack}>
                 <SkipBack size={18} />
               </IconButton>

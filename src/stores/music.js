@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Howl } from 'howler';
 import { resolveAudioUrl, incrementPlayCount } from '../services/supabaseMusicApi';
+import { getSignedUrl, invalidateSignedUrl, BUCKETS } from '../config/supabase';
 import { ytPlayer } from '../player/youtube';
 import { updateMediaMetadata, updateMediaPosition, bindMediaActions, clearMediaSession } from '../player/mediaSession';
 import { getLyricsOffset } from '../services/lyricsApi';
@@ -16,6 +17,25 @@ let pollTimer = null;
 let playToken = 0;
 let seekAfterLoad = null;
 let lastPositionSync = 0;
+let audioPlayback = null;
+let audioAttempt = 0;
+let retryTimer = null;
+let loadTimer = null;
+let detachAudioEvents = null;
+let sessionTimer = null;
+let lastSessionWrite = -Infinity;
+let lastSessionSnapshot = null;
+let lastPersistedSecond = -1;
+const RETRY_DELAYS = [1000, 2000, 4000];
+const AUDIO_TIMEOUT = 20_000;
+
+const cancelAudioWork = () => {
+  audioAttempt++;
+  clearTimeout(retryTimer);
+  clearTimeout(loadTimer);
+  retryTimer = null;
+  loadTimer = null;
+};
 
 const loadJson = (key, fallback) => {
   try {
@@ -37,6 +57,8 @@ const saveJson = (key, value) => {
 const savedPrefs = loadJson(PREFS_KEY, {});
 
 const stopHowl = () => {
+  detachAudioEvents?.();
+  detachAudioEvents = null;
   if (howl) {
     try {
       howl.stop();
@@ -77,6 +99,141 @@ const pushRecent = (track) => {
 
 export const getRecentTracks = () => loadJson(RECENT_KEY, []);
 
+// Howler 2.x has no public HTMLMediaElement accessor. Keep the single HTML5
+// sound lookup here; if its internals change, playback still uses public APIs.
+const bindNativeAudioEvents = (instance, onBuffering, onPlaying) => {
+  detachAudioEvents?.();
+  const node = Array.isArray(instance._sounds) ? instance._sounds[0]?._node : null;
+  if (!node?.addEventListener || !node?.removeEventListener) {
+    detachAudioEvents = null;
+    return;
+  }
+  const stalled = () => {
+    if (node.readyState < 3) onBuffering();
+  };
+  node.addEventListener('waiting', onBuffering);
+  node.addEventListener('stalled', stalled);
+  node.addEventListener('playing', onPlaying);
+  detachAudioEvents = () => {
+    node.removeEventListener('waiting', onBuffering);
+    node.removeEventListener('stalled', stalled);
+    node.removeEventListener('playing', onPlaying);
+  };
+};
+
+const loadAudio = async (set, get, playback) => {
+  cancelAudioWork();
+  const attempt = audioAttempt;
+  const { track, token } = playback;
+  const valid = () => audioPlayback === playback && token === playToken && attempt === audioAttempt;
+  const bucket = track.bucket || BUCKETS.MUSIC;
+  let instance;
+
+  const fail = (err, canRetry) => {
+    if (!valid()) return;
+    const intendedToPlay = get().isPlaying;
+    const position = instance?.state() === 'loaded' ? instance.seek() : null;
+    if (typeof position === 'number' && Number.isFinite(position)) set({ currentTime: position });
+    cancelAudioWork();
+    stopHowl();
+    stopPolling();
+    if (intendedToPlay && canRetry && playback.retries < RETRY_DELAYS.length) {
+      if (track.audioPath) invalidateSignedUrl(bucket, track.audioPath);
+      set({ status: 'buffering', error: null });
+      const delay = RETRY_DELAYS[playback.retries++];
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        if (audioPlayback === playback && token === playToken && get().isPlaying) {
+          loadAudio(set, get, playback);
+        }
+      }, delay);
+    } else {
+      const message = err?.message || 'Gagal memuat audio. Coba putar lagi.';
+      set({ isPlaying: false, status: 'error', error: message });
+      get()._persistSession();
+      toast.error(message);
+    }
+  };
+  const armTimeout = () => {
+    if (loadTimer) return;
+    loadTimer = setTimeout(() => fail(new DOMException('Koneksi audio terlalu lambat. Coba lagi.', 'TimeoutError'), true), AUDIO_TIMEOUT);
+  };
+  const playing = () => {
+    if (!valid()) return;
+    if (!get().isPlaying) {
+      instance?.pause();
+      return;
+    }
+    clearTimeout(loadTimer);
+    loadTimer = null;
+    set({ status: 'playing', error: null });
+    get()._startPolling();
+  };
+  const buffering = () => {
+    if (!valid() || !get().isPlaying) return;
+    set({ status: 'buffering' });
+    armTimeout();
+  };
+
+  armTimeout();
+  try {
+    // Private paths must not fall back to a legacy public URL on signing failure.
+    const url = track.audioPath
+      ? await getSignedUrl(bucket, track.audioPath)
+      : await resolveAudioUrl(track);
+    if (!valid() || !get().isPlaying) return;
+    if (!url) throw new Error('Audio tidak tersedia');
+    instance = new Howl({
+      src: [url],
+      html5: true,
+      volume: get().muted ? 0 : get().volume,
+      onplay: playing,
+      onpause: () => {
+        if (!valid() || get().isPlaying) return;
+        stopPolling();
+        get()._persistSession();
+      },
+      onend: () => {
+        if (!valid() || !get().isPlaying) return;
+        clearTimeout(loadTimer);
+        loadTimer = null;
+        stopPolling();
+        get()._handleEnded();
+      },
+      onload: () => {
+        if (!valid()) return;
+        const duration = instance.duration();
+        if (Number.isFinite(duration) && duration > 0) set({ duration });
+        if (get().currentTime > 0) instance.seek(get().currentTime);
+        bindNativeAudioEvents(instance, buffering, playing);
+      },
+      onloaderror: (_id, code) => {
+        // Browsers may report an expired signed URL as SRC_NOT_SUPPORTED (4).
+        const renewSignedUrl = Number(code) === 4 && track.audioPath && playback.retries === 0;
+        fail(new Error('Gagal memuat audio. Coba putar lagi.'), Number(code) === 2 || renewSignedUrl);
+      },
+      onplayerror: () => {
+        if (!valid() || !get().isPlaying) return;
+        clearTimeout(loadTimer);
+        loadTimer = null;
+        stopPolling();
+        playback.playBlocked = true;
+        const message = 'Gagal memutar audio. Tekan putar untuk mencoba lagi.';
+        set({ isPlaying: false, status: 'error', error: message });
+        toast.error(message);
+      },
+    });
+    howl = instance;
+    bindNativeAudioEvents(instance, buffering, playing);
+    instance.play();
+  } catch (err) {
+    const status = Number(err?.status || err?.statusCode);
+    const transient = err?.name === 'TimeoutError' || err instanceof TypeError ||
+      /network|fetch|connection/i.test(err?.message || '') || status === 408 || status === 429 || status >= 500;
+    fail(err, err?.name !== 'AbortError' && transient);
+  }
+};
+
 const useMusicStore = create((set, get) => ({
   currentTrack: null,
   playlist: [],
@@ -102,6 +259,9 @@ const useMusicStore = create((set, get) => ({
     const token = ++playToken;
     const prev = get().currentTrack;
 
+    cancelAudioWork();
+    audioPlayback = null;
+    seekAfterLoad = null;
     stopHowl();
     stopPolling();
     if (prev?.source === 'youtube' && track.source !== 'youtube') {
@@ -139,94 +299,61 @@ const useMusicStore = create((set, get) => ({
       return;
     }
 
-    try {
-      const url = await resolveAudioUrl(track);
-      if (token !== playToken) return;
-      if (!url) throw new Error('Audio tidak tersedia');
+    audioPlayback = { track, token, retries: 0 };
+    return loadAudio(set, get, audioPlayback);
+  },
 
-      const startAt = seekAfterLoad;
-      seekAfterLoad = null;
-
-      howl = new Howl({
-        src: [url],
-        html5: true,
-        volume: get().muted ? 0 : get().volume,
-        onplay: () => {
-          if (token !== playToken) return;
-          set({ isPlaying: true, status: 'playing' });
-          get()._startPolling();
-        },
-        onpause: () => {
-          if (token !== playToken) return;
-          set({ isPlaying: false, status: 'paused' });
-          stopPolling();
-          get()._persistSession();
-        },
-        onend: () => {
-          if (token !== playToken) return;
-          stopPolling();
-          get()._handleEnded();
-        },
-        onload: () => {
-          if (token !== playToken) return;
-          const d = howl?.duration();
-          if (d && isFinite(d)) set({ duration: d });
-          if (startAt != null && howl) howl.seek(startAt);
-        },
-        onloaderror: (_id, err) => {
-          if (token !== playToken) return;
-          console.error('Audio load error:', err);
-          set({ isPlaying: false, status: 'error', error: 'Gagal memuat audio' });
-          stopPolling();
-          toast.error('Gagal memuat audio. Coba putar lagi.');
-        },
-        onplayerror: (_id, err) => {
-          if (token !== playToken) return;
-          console.error('Audio play error:', err);
-          set({ isPlaying: false, status: 'error', error: 'Gagal memutar audio' });
-          toast.error('Gagal memutar audio. Coba lagi.');
-        },
-      });
+  play: () => {
+    const { currentTrack, isPlaying, currentTime, status } = get();
+    if (!currentTrack || isPlaying) return;
+    set({ isPlaying: true, status: 'loading', error: null });
+    if (currentTrack.source === 'youtube') {
+      playToken++;
+      if (ytPlayer.isReady() && status !== 'error') ytPlayer.play();
+      else {
+        seekAfterLoad = currentTime;
+        set({ ytLoadNonce: get().ytLoadNonce + 1 });
+      }
+      return;
+    }
+    if (howl?.state() === 'loaded' && (status !== 'error' || audioPlayback?.playBlocked)) {
+      audioPlayback.retries = 0;
+      if (audioPlayback.playBlocked) howl.seek(currentTime);
+      audioPlayback.playBlocked = false;
       howl.play();
-    } catch (err) {
-      if (token !== playToken) return;
-      console.error('playTrack error:', err);
-      set({ isPlaying: false, status: 'error', error: err.message || 'Gagal memutar lagu' });
-      toast.error(err.message || 'Gagal memutar lagu');
+    } else {
+      cancelAudioWork();
+      stopHowl();
+      audioPlayback = { track: currentTrack, token: ++playToken, retries: 0 };
+      if (currentTrack.audioPath) invalidateSignedUrl(currentTrack.bucket || BUCKETS.MUSIC, currentTrack.audioPath);
+      return loadAudio(set, get, audioPlayback);
     }
   },
 
   togglePlay: () => {
-    const { currentTrack, isPlaying, currentTime } = get();
-    if (!currentTrack) return;
-
-    if (currentTrack.source === 'youtube') {
-      if (isPlaying) {
-        ytPlayer.pause();
-      } else if (ytPlayer.isReady()) {
-        ytPlayer.play();
-      } else {
-        seekAfterLoad = currentTime > 1 ? currentTime : null;
-        set({ isPlaying: true, status: 'loading', ytLoadNonce: get().ytLoadNonce + 1 });
-      }
-      return;
-    }
-
-    if (!howl) {
-      seekAfterLoad = currentTime > 1 ? currentTime : null;
-      get().playTrack(currentTrack, get().playlist);
-      return;
-    }
-
-    if (isPlaying) howl.pause();
-    else howl.play();
+    if (get().isPlaying) get().pause();
+    else return get().play();
   },
 
   pause: () => {
-    const { currentTrack, isPlaying } = get();
-    if (!isPlaying || !currentTrack) return;
+    const { currentTrack } = get();
+    if (!currentTrack) return;
+    set({ isPlaying: false, status: 'paused' });
+    clearTimeout(retryTimer);
+    clearTimeout(loadTimer);
+    retryTimer = null;
+    loadTimer = null;
+    stopPolling();
     if (currentTrack.source === 'youtube') ytPlayer.pause();
-    else howl?.pause();
+    else if (howl?.state() === 'loaded') {
+      const position = howl.seek();
+      if (typeof position === 'number' && Number.isFinite(position)) set({ currentTime: position });
+      howl.pause();
+    } else {
+      cancelAudioWork();
+      stopHowl();
+    }
+    get()._persistSession();
   },
 
   nextTrack: (auto = false) => {
@@ -250,10 +377,9 @@ const useMusicStore = create((set, get) => ({
       nextIndex = currentIndex + 1;
       if (nextIndex >= playlist.length) {
         if (auto && repeat === 'off') {
-          set({ isPlaying: false, status: 'paused', currentTime: 0 });
-          stopPolling();
-          if (get().currentTrack?.source === 'youtube') ytPlayer.pause();
-          else howl?.pause();
+          get().pause();
+          set({ currentTime: 0 });
+          if (howl?.state() === 'loaded') howl.seek(0);
           get()._persistSession();
           return;
         }
@@ -279,11 +405,10 @@ const useMusicStore = create((set, get) => ({
     if (!currentTrack) return;
     const t = Math.max(0, duration ? Math.min(seconds, duration) : seconds);
     if (currentTrack.source === 'youtube') {
-      ytPlayer.seek(t);
-    } else if (howl) {
+      if (ytPlayer.isReady()) ytPlayer.seek(t);
+      else seekAfterLoad = t;
+    } else if (howl?.state() === 'loaded') {
       howl.seek(t);
-    } else {
-      seekAfterLoad = t;
     }
     set({ currentTime: t });
     updateMediaPosition(t, duration);
@@ -358,8 +483,13 @@ const useMusicStore = create((set, get) => ({
   setNowPlayingTab: (tab) => set({ nowPlayingTab: tab }),
 
   ytHooks: {
+    shouldPlay: () => get().currentTrack?.source === 'youtube' && get().isPlaying,
     onPlaying: () => {
-      set({ isPlaying: true, status: 'playing' });
+      if (get().currentTrack?.source !== 'youtube' || !get().isPlaying) {
+        ytPlayer.pause();
+        return;
+      }
+      set({ isPlaying: true, status: 'playing', error: null });
       get()._startPolling();
       if (seekAfterLoad != null) {
         ytPlayer.seek(seekAfterLoad);
@@ -367,30 +497,42 @@ const useMusicStore = create((set, get) => ({
       }
     },
     onPaused: () => {
+      if (get().currentTrack?.source !== 'youtube') return;
       set({ isPlaying: false, status: 'paused' });
       stopPolling();
       get()._persistSession();
     },
     onEnded: () => {
+      if (get().currentTrack?.source !== 'youtube' || !get().isPlaying) return;
       stopPolling();
       get()._handleEnded();
     },
     onBuffering: () => {
-      if (get().isPlaying) set({ status: 'buffering' });
+      if (get().currentTrack?.source === 'youtube' && get().isPlaying) set({ status: 'buffering' });
     },
     onDuration: (d) => {
-      if (d && isFinite(d) && d > 0) set({ duration: d });
+      if (get().currentTrack?.source === 'youtube' && d && isFinite(d) && d > 0) set({ duration: d });
+    },
+    onAutoplayBlocked: () => {
+      if (get().currentTrack?.source !== 'youtube') return;
+      set({ isPlaying: false, status: 'paused' });
+      stopPolling();
+      get()._persistSession();
     },
     onError: (code) => {
+      if (get().currentTrack?.source !== 'youtube') return;
+      const token = playToken;
       console.error('YouTube player error:', code);
       if (code === 101 || code === 150) {
         toast.error('Video ini tidak bisa diputar di sini. Lewati ke lagu berikutnya.');
       } else {
         toast.error('Pemutar YouTube bermasalah. Lewati ke lagu berikutnya.');
       }
-      set({ status: 'error', error: `YouTube error ${code}` });
+      set({ isPlaying: false, status: 'error', error: `YouTube error ${code}` });
+      stopPolling();
+      if (code === 'API_LOAD') return;
       setTimeout(() => {
-        if (get().status === 'error') get().nextTrack(true);
+        if (token === playToken && get().status === 'error') get().nextTrack(true);
       }, 1200);
     },
   },
@@ -428,14 +570,20 @@ const useMusicStore = create((set, get) => ({
         const seek = howl.seek();
         t = typeof seek === 'number' ? seek : 0;
       }
-      set({ currentTime: t });
+      if (t !== get().currentTime) {
+        set({ currentTime: t });
+        const second = Math.floor(t);
+        if (second !== lastPersistedSecond) {
+          lastPersistedSecond = second;
+          get()._persistSession();
+        }
+      }
       get()._syncLyricIndex(t);
       const now = Date.now();
       if (now - lastPositionSync > 1000) {
         lastPositionSync = now;
         updateMediaPosition(t, get().duration);
       }
-      if (Math.floor(t) % 5 === 0) get()._persistSession();
     }, 250);
   },
 
@@ -454,23 +602,33 @@ const useMusicStore = create((set, get) => ({
 
   _persistSession: () => {
     const { currentTrack, playlist, currentIndex, queue, currentTime } = get();
-    if (!currentTrack) {
-      try {
-        localStorage.removeItem(SESSION_KEY);
-      } catch { /* ignore */ }
+    if (!currentTrack) return;
+    const remaining = 5000 - (Date.now() - lastSessionWrite);
+    if (remaining > 0) {
+      if (!sessionTimer) sessionTimer = setTimeout(() => {
+        sessionTimer = null;
+        get()._persistSession();
+      }, remaining);
       return;
     }
-    saveJson(SESSION_KEY, {
+    clearTimeout(sessionTimer);
+    sessionTimer = null;
+    const session = {
       currentTrack,
       playlist: playlist.slice(0, 100),
       currentIndex,
       queue: queue.slice(0, 50),
       currentTime,
-      savedAt: Date.now(),
-    });
+    };
+    const snapshot = JSON.stringify(session);
+    if (snapshot === lastSessionSnapshot) return;
+    saveJson(SESSION_KEY, { ...session, savedAt: Date.now() });
+    lastSessionSnapshot = snapshot;
+    lastSessionWrite = Date.now();
   },
 
   restoreSession: () => {
+    if (get().currentTrack) return;
     const saved = loadJson(SESSION_KEY, null);
     if (!saved?.currentTrack) return;
     set({
@@ -488,6 +646,12 @@ const useMusicStore = create((set, get) => ({
 
   stopAndClear: () => {
     playToken++;
+    cancelAudioWork();
+    audioPlayback = null;
+    seekAfterLoad = null;
+    clearTimeout(sessionTimer);
+    sessionTimer = null;
+    lastSessionSnapshot = null;
     stopHowl();
     stopPolling();
     ytPlayer.pause();
@@ -513,7 +677,7 @@ const useMusicStore = create((set, get) => ({
 }));
 
 bindMediaActions({
-  play: () => useMusicStore.getState().togglePlay(),
+  play: () => useMusicStore.getState().play(),
   pause: () => useMusicStore.getState().pause(),
   previous: () => useMusicStore.getState().previousTrack(),
   next: () => useMusicStore.getState().nextTrack(false),

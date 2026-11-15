@@ -26,8 +26,8 @@ const ConfirmModal = ({
     <Modal open={open} onClose={busy ? () => {} : onClose} title={title}>
       <div className="space-y-4">
         <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-kv border-3 border-kv-ink bg-kv-red">
-            <AlertTriangle size={20} className="text-white" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-kv-line bg-kv-panel">
+            <AlertTriangle size={20} className="text-kv-danger" />
           </span>
           <p className="text-sm leading-relaxed">{message}</p>
         </div>
@@ -35,7 +35,7 @@ const ConfirmModal = ({
           <Button variant="ghost" size="sm" onClick={onClose} disabled={busy}>
             Batal
           </Button>
-          <Button variant="danger" size="sm" onClick={handleConfirm} disabled={busy}>
+          <Button variant="primary" size="sm" onClick={handleConfirm} disabled={busy}>
             {busy && <Loader2 size={16} className="animate-spin" />}
             {confirmLabel}
           </Button>

@@ -14,7 +14,7 @@ const AddToPlaylistModal = () => {
   const track = useModalStore((s) => s.addToPlaylistTrack);
   const close = useModalStore((s) => s.closeAddToPlaylist);
   const user = useAuthStore((s) => s.user);
-  const { playlists, loading, loadUserPlaylists, createPlaylist, addSongToPlaylist } = usePlaylistStore();
+  const { playlists, loading, error, loadUserPlaylists, createPlaylist, addSongToPlaylist } = usePlaylistStore();
   const [newName, setNewName] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -71,10 +71,10 @@ const AddToPlaylistModal = () => {
     <Modal open={open} onClose={close} title="Tambah ke playlist">
       {track && (
         <div className="space-y-4">
-          <div className="flex items-center gap-3 rounded-kv border-3 border-kv-ink bg-kv-muted p-2.5">
-            <span className="block h-10 w-10 shrink-0 overflow-hidden rounded border-2 border-kv-ink bg-kv-surface">
+          <div className="flex items-center gap-3 rounded-kv border border-kv-line bg-kv-panel p-2.5">
+            <span className="block h-10 w-10 shrink-0 overflow-hidden rounded border border-kv-line bg-kv-surface">
               {track.albumArt ? (
-                <img src={track.albumArt} alt="" className="h-full w-full object-cover" />
+                <img src={track.albumArt} alt="" decoding="async" className="h-full w-full object-cover" />
               ) : (
                 <span className="flex h-full w-full items-center justify-center">
                   <Music2 size={16} />
@@ -111,11 +111,12 @@ const AddToPlaylistModal = () => {
 
           <div className="max-h-[40vh] space-y-2 overflow-y-auto pr-1">
             {loading && playlists.length === 0 && (
-              <p className="py-4 text-center font-mono text-xs uppercase tracking-widest text-kv-ink-muted">
+              <p className="py-4 text-center font-mono text-xs text-kv-ink-muted">
                 Memuat playlist…
               </p>
             )}
-            {!loading && playlists.length === 0 && (
+            {error && <div role="alert" className="py-3 text-sm"><p>Playlist belum bisa dimuat atau diperbarui.</p><Button size="sm" variant="ghost" onClick={() => loadUserPlaylists(user.id).catch(() => {})}>Muat ulang</Button></div>}
+            {!loading && !error && playlists.length === 0 && (
               <EmptyState
                 icon={ListPlus}
                 title="Belum ada playlist"
@@ -129,15 +130,15 @@ const AddToPlaylistModal = () => {
                 type="button"
                 onClick={() => addTo(p)}
                 disabled={!!busyId}
-                className="kv-press flex min-h-[52px] w-full items-center gap-3 rounded-kv border-3 border-kv-ink bg-kv-surface px-3 py-2 text-left shadow-kv hover:bg-kv-muted disabled:opacity-60"
+                className="flex min-h-[60px] w-full items-center gap-3 rounded-kv border border-kv-line bg-kv-surface px-3 py-2 text-left hover:bg-kv-muted disabled:opacity-60"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded border-2 border-kv-ink bg-kv-purple">
-                  <ListPlus size={16} className="text-[#0a0a0a]" />
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-kv-line bg-kv-panel">
+                  <ListPlus size={16} className="text-kv-ink" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-bold">{p.name}</span>
                   <span className="block font-mono text-[11px] text-kv-ink-muted">
-                    {p.trackCount ?? p.track_count ?? 0} lagu
+                    {p.trackCount ?? p.track_count ?? p.tracks?.length ?? 0} lagu
                   </span>
                 </span>
                 {busyId === p.id && <Loader2 size={18} className="animate-spin" />}

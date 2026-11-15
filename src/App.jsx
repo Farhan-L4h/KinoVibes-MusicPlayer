@@ -1,21 +1,23 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAuthStore } from './stores/auth';
 import './hooks/useTheme';
 import PrivateRoute from './components/PrivateRoute';
-import Layout from './components/layout/Layout';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Home from './pages/Home';
-import Search from './pages/Search';
-import Library from './pages/Library';
-import LyricsPage from './pages/LyricsPage';
-import Playlists from './pages/Playlists';
-import PlaylistDetail from './pages/PlaylistDetail';
-import Favorites from './pages/Favorites';
-import Upload from './pages/Upload';
-import Profile from './pages/Profile';
-import NotFound from './pages/NotFound';
+import LoadingSpinner from './components/LoadingSpinner';
+const Layout = lazy(() => import('./components/layout/Layout'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const Home = lazy(() => import('./pages/Home'));
+const Search = lazy(() => import('./pages/Search'));
+const Library = lazy(() => import('./pages/Library'));
+const LyricsPage = lazy(() => import('./pages/LyricsPage'));
+const Playlists = lazy(() => import('./pages/Playlists'));
+const PlaylistDetail = lazy(() => import('./pages/PlaylistDetail'));
+const Favorites = lazy(() => import('./pages/Favorites'));
+const Upload = lazy(() => import('./pages/Upload'));
+const Profile = lazy(() => import('./pages/Profile'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 const App = () => {
   useEffect(() => {
@@ -25,9 +27,11 @@ const App = () => {
 
   return (
     <BrowserRouter>
+      <Suspense fallback={<LoadingSpinner />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           element={
             <PrivateRoute>
@@ -47,6 +51,7 @@ const App = () => {
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 };

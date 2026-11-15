@@ -1,28 +1,29 @@
 import { ListMusic, X, Music2, Trash2 } from 'lucide-react';
 import { useMusicStore } from '../../stores/music';
-import { formatTime } from '../../lib/utils';
+import { formatTime, cn } from '../../lib/utils';
 import EmptyState from '../ui/EmptyState';
 import EqBars from '../ui/EqBars';
 
 const Row = ({ track, active, playing, onPlay, onRemove, removeLabel }) => (
   <div
-    className={`flex items-center gap-3 rounded-kv border-3 px-3 py-2 ${
-      active ? 'border-kv-ink bg-kv-yellow shadow-kv' : 'border-transparent hover:border-kv-ink hover:bg-kv-surface-muted'
-    }`}
+    className={cn(
+      'flex items-center gap-3 rounded-kv border px-3 py-2 transition-colors',
+      active ? 'border-kv-line bg-kv-muted' : 'border-transparent hover:bg-kv-muted'
+    )}
   >
     <button type="button" onClick={onPlay} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-      <span className="block h-9 w-9 shrink-0 overflow-hidden rounded border-2 border-kv-ink bg-kv-surface-muted">
+      <span className="block h-9 w-9 shrink-0 overflow-hidden rounded-md bg-kv-surface-muted">
         {track.albumArt ? (
-          <img src={track.albumArt} alt="" className="h-full w-full object-cover" />
+          <img src={track.albumArt} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
         ) : (
-          <span className="flex h-full w-full items-center justify-center">
+          <span className="flex h-full w-full items-center justify-center text-kv-ink-muted">
             <Music2 size={14} />
           </span>
         )}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-bold">{track.title}</span>
-        <span className="block truncate text-xs text-kv-ink-muted">{track.artist}</span>
+        <span className="block truncate font-mono text-xs text-kv-ink-muted">{track.artist}</span>
       </span>
       {active && <EqBars playing={playing} />}
       <span className="shrink-0 font-mono text-xs text-kv-ink-muted">{formatTime(track.duration)}</span>
@@ -33,7 +34,7 @@ const Row = ({ track, active, playing, onPlay, onRemove, removeLabel }) => (
         onClick={onRemove}
         aria-label={removeLabel}
         title={removeLabel}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded border-2 border-kv-ink bg-kv-surface hover:bg-kv-red hover:text-white"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-kv-ink-muted transition-colors hover:bg-kv-surface hover:text-kv-red"
       >
         <X size={14} />
       </button>
@@ -66,18 +67,16 @@ const QueueList = () => {
       {queue.length > 0 && (
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-kv-ink-muted">
-              Antrean manual · {queue.length}
-            </h3>
+            <h3 className="kv-mono-label">Antrean manual · {queue.length}</h3>
             <button
               type="button"
               onClick={clearQueue}
-              className="flex items-center gap-1 rounded border-2 border-kv-ink bg-kv-surface px-2 py-1 font-mono text-[10px] font-bold uppercase hover:bg-kv-red hover:text-white"
+              className="flex items-center gap-1 rounded-full border border-kv-line px-2.5 py-1 font-mono text-[10px] font-bold uppercase text-kv-ink-muted transition-colors hover:border-kv-red hover:text-kv-red"
             >
               <Trash2 size={12} /> Kosongkan
             </button>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {queue.map((t) => (
               <Row
                 key={`q-${t.id}`}
@@ -96,10 +95,8 @@ const QueueList = () => {
 
       {upNext.length > 0 && (
         <section>
-          <h3 className="mb-2 font-mono text-xs font-bold uppercase tracking-widest text-kv-ink-muted">
-            Berikutnya · {upNext.length}
-          </h3>
-          <div className="space-y-1.5">
+          <h3 className="kv-mono-label mb-2">Berikutnya · {upNext.length}</h3>
+          <div className="space-y-1">
             {upNext.map((t, i) => (
               <Row
                 key={`n-${t.id}-${i}`}

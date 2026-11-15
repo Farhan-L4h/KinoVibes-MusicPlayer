@@ -1,18 +1,18 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Search, Library, Heart, User } from 'lucide-react';
+import { Home, Search, Music2, Heart, ListMusic } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const ITEMS = [
   { to: '/', label: 'Beranda', icon: Home, end: true },
   { to: '/search', label: 'Cari', icon: Search },
-  { to: '/library', label: 'Library', icon: Library },
+  { to: '/library', label: 'Library', icon: Music2 },
   { to: '/favorites', label: 'Favorit', icon: Heart },
-  { to: '/profile', label: 'Profil', icon: User },
+  { to: '/playlists', label: 'Playlist', icon: ListMusic },
 ];
 
 const MobileNav = () => (
   <nav
-    className="fixed bottom-0 left-0 right-0 z-40 flex h-kv-bottomnav items-stretch border-t-3 border-kv-ink bg-kv-surface lg:hidden"
+    className="flex h-kv-bottomnav shrink-0 items-stretch border-t border-kv-line bg-kv-panel lg:hidden"
     aria-label="Navigasi bawah"
   >
     {ITEMS.map(({ to, label, icon: Icon, end }) => (
@@ -22,15 +22,19 @@ const MobileNav = () => (
         end={end}
         className={({ isActive }) =>
           cn(
-            'flex flex-1 flex-col items-center justify-center gap-0.5 border-r-2 border-kv-ink/20 font-mono text-[9px] font-bold uppercase tracking-wider last:border-r-0',
-            isActive ? 'bg-kv-yellow text-[#0a0a0a]' : 'text-kv-ink-muted'
+            'flex flex-1 flex-col items-center justify-center gap-0.5 font-mono text-[9px] font-bold uppercase tracking-wider transition-colors',
+            isActive ? 'text-kv-ink' : 'text-kv-ink-muted'
           )
         }
       >
         {({ isActive }) => (
           <>
-            <Icon size={20} strokeWidth={isActive ? 2.6 : 2} />
+            <Icon size={19} strokeWidth={isActive ? 2.6 : 2} />
             {label}
+            <span
+              className={cn('h-1 w-1 rounded-full', isActive ? 'bg-kv-ink' : 'bg-transparent')}
+              aria-hidden="true"
+            />
           </>
         )}
       </NavLink>

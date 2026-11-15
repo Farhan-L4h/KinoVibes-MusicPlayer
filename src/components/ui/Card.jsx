@@ -5,7 +5,7 @@ export default function Card({ className, accent, children, ...props }) {
     <div className={cn('kv-card relative overflow-hidden', className)} {...props}>
       {accent && (
         <div
-          className="absolute inset-x-0 top-0 h-2 border-b-3 border-kv-ink"
+          className="absolute inset-x-0 top-0 h-1"
           style={{ background: accent }}
           aria-hidden="true"
         />

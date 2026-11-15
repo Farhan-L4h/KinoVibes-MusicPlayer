@@ -40,36 +40,41 @@ const VideoDock = () => {
 
   useEffect(() => {
     if (!isYt) return undefined;
-    let raf;
-    const tick = () => {
+    let raf = 0;
+    const update = () => {
+      raf = 0;
       const host = hostRef.current;
-      if (host) {
-        const slot = getVideoSlot();
-        if (slot && slot.isConnected) {
-          const r = slot.getBoundingClientRect();
-          if (r.width >= 200 && r.height >= 200) {
-            host.style.left = `${r.left}px`;
-            host.style.top = `${r.top}px`;
-            host.style.width = `${r.width}px`;
-            host.style.height = `${r.height}px`;
-            host.style.right = 'auto';
-            host.style.bottom = 'auto';
-          }
-        } else {
-          const mobile = window.innerWidth < 1024;
-          const size = Math.min(DOCK, window.innerWidth - 32);
-          host.style.width = `${size}px`;
-          host.style.height = `${size}px`;
-          host.style.left = 'auto';
-          host.style.top = 'auto';
-          host.style.right = '16px';
-          host.style.bottom = `${(mobile ? 64 : 0) + 88 + 16}px`;
-        }
+      if (!host) return;
+      const slot = getVideoSlot();
+      const r = slot?.isConnected ? slot.getBoundingClientRect() : null;
+      if (r && r.width >= 200 && r.height >= 200 && r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth) {
+        Object.assign(host.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, right: 'auto', bottom: 'auto' });
+      } else {
+        const mobile = innerWidth < 1024;
+        const size = Math.min(mobile ? 200 : DOCK, innerWidth - 24);
+        const bottom = Math.max(12, Math.min((mobile ? 60 + 88 : 88 + 24) + 12, innerHeight - size - 12));
+        Object.assign(host.style, { width: `${size}px`, height: `${size}px`, left: 'auto', top: 'auto', right: mobile ? '12px' : '36px', bottom: `${bottom}px` });
       }
-      raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
+    const observer = new ResizeObserver(schedule);
+    const observeSlot = () => {
+      observer.disconnect();
+      const slot = getVideoSlot();
+      if (slot) observer.observe(slot);
+      schedule();
+    };
+    window.addEventListener('resize', schedule);
+    window.addEventListener('scroll', schedule, true);
+    window.addEventListener('kv-video-slot', observeSlot);
+    observeSlot();
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('scroll', schedule, true);
+      window.removeEventListener('kv-video-slot', observeSlot);
+    };
   }, [isYt]);
 
   if (!isYt) return null;
@@ -77,8 +82,8 @@ const VideoDock = () => {
   return (
     <div
       ref={hostRef}
-      className="fixed z-[55] overflow-hidden rounded-kv border-3 border-kv-ink bg-kv-ink shadow-kv-lg"
-      style={{ width: DOCK, height: DOCK, right: 16, bottom: 168 }}
+      className="fixed z-[55] overflow-hidden rounded-kv-lg border border-white/20 bg-black shadow-kv-lg"
+      style={{ width: DOCK, height: DOCK, right: 12, bottom: 156 }}
     >
       <div ref={frameRef} className="absolute inset-0 [&_iframe]:h-full [&_iframe]:w-full" />
       <button
@@ -90,7 +95,7 @@ const VideoDock = () => {
       <button
         type="button"
         onClick={() => useMusicStore.getState().setNowPlayingOpen(true)}
-        className="absolute left-2 top-2 rounded-kv border-2 border-kv-ink bg-kv-yellow px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-kv-ink"
+        className="absolute left-2 top-2 rounded-full border border-white/25 bg-black/70 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm"
       >
         ▶ YouTube
       </button>

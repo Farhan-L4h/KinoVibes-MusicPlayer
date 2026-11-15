@@ -1,11 +1,10 @@
 import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
 import { useToastStore } from '../../stores/toast';
-import { cn } from '../../lib/utils';
 
-const TONES = {
-  green: { bg: 'bg-kv-green', Icon: CheckCircle2 },
-  red: { bg: 'bg-kv-red', Icon: AlertTriangle },
-  blue: { bg: 'bg-kv-blue', Icon: Info },
+const ICONS = {
+  green: CheckCircle2,
+  red: AlertTriangle,
+  blue: Info,
 };
 
 export default function Toaster() {
@@ -13,26 +12,23 @@ export default function Toaster() {
   const dismiss = useToastStore((s) => s.dismiss);
 
   return (
-    <div className="pointer-events-none fixed right-3 top-3 z-[120] flex w-[calc(100%-1.5rem)] max-w-sm flex-col gap-2 sm:right-5 sm:top-5">
+    <div className="pointer-events-none fixed right-3 top-3 z-[120] flex w-[calc(100%-1.5rem)] max-w-sm flex-col items-end gap-2 sm:right-5 sm:top-5">
       {toasts.map(({ id, message, tone }) => {
-        const { bg, Icon } = TONES[tone] || TONES.blue;
+        const Icon = ICONS[tone] || Info;
         return (
           <div
             key={id}
             role="status"
-            className={cn(
-              'pointer-events-auto flex animate-pop-in items-center gap-2.5 rounded-kv border-3 border-kv-ink px-3 py-2.5 shadow-kv',
-              bg
-            )}
+            className="pointer-events-auto flex animate-pop-in items-center gap-2.5 rounded-full border border-kv-ink bg-kv-ink px-4 py-2.5 text-kv-panel shadow-kv-lg"
           >
-            <Icon className="h-5 w-5 shrink-0 text-[#0a0a0a]" />
-            <p className="flex-1 text-sm font-bold text-[#0a0a0a]">{message}</p>
+            <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+            <p className="flex-1 text-sm font-semibold">{message}</p>
             <button
               onClick={() => dismiss(id)}
               aria-label="Tutup notifikasi"
-              className="rounded-[4px] border-2 border-[#0a0a0a] bg-white/40 p-0.5 text-[#0a0a0a] hover:bg-white/70"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-kv-panel/70 transition-colors hover:bg-kv-panel/15 hover:text-kv-panel"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         );

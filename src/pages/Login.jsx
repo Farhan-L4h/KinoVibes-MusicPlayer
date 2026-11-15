@@ -87,12 +87,12 @@ const Login = () => {
 
   return (
     <AuthShell>
-      <div className="kv-card animate-pop-in p-6 sm:p-8">
-        <h2 className="font-display text-3xl uppercase">Masuk</h2>
+      <div className="rounded-kv-lg border border-kv-line bg-kv-surface p-6 sm:p-8">
+        <h2 className="font-display text-2xl leading-relaxed">Masuk</h2>
         <p className="mt-1 text-sm text-kv-ink-muted">Lanjutkan sesi musik kamu.</p>
 
         {error && (
-          <div role="alert" className="mt-4 rounded-kv border-3 border-kv-ink bg-kv-red px-3 py-2.5 text-sm font-bold text-white">
+          <div role="alert" className="mt-4 rounded-kv border border-kv-line bg-kv-panel px-3 py-2.5 text-sm text-kv-danger">
             {error}
           </div>
         )}
@@ -140,7 +140,7 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={() => setForgot(true)}
-                  className="text-xs font-bold text-kv-ink-muted underline decoration-2 underline-offset-2 hover:text-kv-ink"
+                  className="min-h-11 text-xs font-semibold text-kv-ink-muted underline underline-offset-2 hover:text-kv-ink"
                 >
                   Lupa kata sandi?
                 </button>
@@ -152,9 +152,9 @@ const Login = () => {
             </form>
 
             <div className="my-5 flex items-center gap-3">
-              <span className="h-[3px] flex-1 bg-kv-ink" />
-              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-kv-ink-muted">atau</span>
-              <span className="h-[3px] flex-1 bg-kv-ink" />
+              <span className="h-px flex-1 bg-kv-line" />
+              <span className="font-mono text-[11px] text-kv-ink-muted">atau</span>
+              <span className="h-px flex-1 bg-kv-line" />
             </div>
 
             <Button type="button" variant="ghost" className="w-full" onClick={handleGoogle} disabled={googleBusy}>
@@ -166,7 +166,7 @@ const Login = () => {
 
         <p className="mt-6 text-center text-sm text-kv-ink-muted">
           Belum punya akun?{' '}
-          <Link to="/register" className="font-bold text-kv-ink underline decoration-kv-pink decoration-3 underline-offset-2">
+          <Link to="/register" className="px-1 py-4 font-bold text-kv-ink underline decoration-kv-line-strong underline-offset-2">
             Daftar
           </Link>
         </p>

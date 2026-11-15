@@ -1,60 +1,136 @@
-/* KinoVibe neobrutalism design tokens — cream + yellow, hard shadows, thick borders */
+/* KinoVibe — soft monochrome design tokens.
+   Black canvas, one warm-gray rounded panel, ink-on-paper controls,
+   pixel display type + mono labels. Color appears only as signal. */
+
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/archivo-var.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/silkscreen-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/silkscreen-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/spacemono-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/spacemono-700.woff2') format('woff2');
+}
 
 :root {
-  --kv-bg: #fff8e7;
-  --kv-surface: #ffffff;
-  --kv-surface-muted: #fff0c2;
-  --kv-ink: #0a0a0a;
-  --kv-ink-muted: #57534a;
+  --kv-bg: #0b0b0a;
+  --kv-panel: #e9e8e4;
+  --kv-surface: #f7f6f3;
+  --kv-surface-muted: #dedcd6;
+  --kv-ink: #171613;
+  --kv-ink-muted: #5e5d56;
+  --kv-line: #c8c7c1;
+  --kv-line-strong: #171613;
 
-  --kv-yellow: #ffde59;
-  --kv-pink: #ff6b9d;
-  --kv-blue: #4d9fff;
-  --kv-green: #5ce08a;
-  --kv-orange: #ff8a3d;
-  --kv-purple: #b28dff;
-  --kv-red: #ff5c5c;
-  --kv-danger: #d92d20;
+  --kv-accent: #171613;
+  --kv-accent-ink: #f7f6f3;
+
+  --kv-yellow: #d9a83f;
+  --kv-pink: #c25f92;
+  --kv-blue: #4f83c9;
+  --kv-green: #4f9e6d;
+  --kv-orange: #c97f4f;
+  --kv-purple: #8d78bd;
+  --kv-red: #c05043;
+  --kv-danger: #b23a2c;
   --kv-danger-ink: #ffffff;
+  --kv-success: #4f9e6d;
+  --kv-warning: #d9a83f;
+  --kv-info: #4f83c9;
 
-  --kv-accent: var(--kv-yellow);
+  --kv-led: #d4453a;
 
-  --kv-stripe: rgba(10, 10, 10, 0.07);
-  --kv-dot: rgba(10, 10, 10, 0.18);
+  --kv-deck-1: #f4f3f0;
+  --kv-deck-2: #c6c5c1;
+  --kv-deck-3: #e6e5e1;
+  --kv-deck-edge: #a9a8a4;
+  --kv-vinyl: #101010;
+  --kv-vinyl-sheen: rgba(255, 255, 255, 0.09);
+  --kv-label: #b9b8b4;
 
-  --kv-border-width: 3px;
-  --kv-border: var(--kv-border-width) solid var(--kv-ink);
-  --kv-radius: 8px;
-  --kv-radius-lg: 12px;
-  --kv-shadow: 4px 4px 0 var(--kv-ink);
-  --kv-shadow-lg: 8px 8px 0 var(--kv-ink);
-  --kv-shadow-pressed: 0 0 0 var(--kv-ink);
+  --kv-border-width: 1.5px;
+  --kv-border: var(--kv-border-width) solid var(--kv-line-strong);
+  --kv-radius: 12px;
+  --kv-radius-lg: 20px;
+  --kv-radius-panel: 28px;
+  --kv-shadow: 0 1px 2px rgba(11, 11, 10, 0.07), 0 10px 28px -14px rgba(11, 11, 10, 0.28);
+  --kv-shadow-lg: 0 30px 70px -28px rgba(11, 11, 10, 0.5);
+  --kv-shadow-pressed: 0 1px 2px rgba(11, 11, 10, 0.12);
 
-  --kv-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --kv-duration: 120ms;
+  --kv-ease: cubic-bezier(0.22, 0.9, 0.28, 1);
+  --kv-duration: 180ms;
 
-  --kv-sidebar-w: 264px;
-  --kv-miniplayer-h: 88px;
-  --kv-bottomnav-h: 64px;
+  --kv-rail-w: 76px;
+  --kv-sidebar-w: 76px;
+  --kv-miniplayer-h: 84px;
+  --kv-bottomnav-h: 60px;
+
+  --kv-lyric-ink: #f5f4f0;
 }
 
 .dark {
-  --kv-bg: #141210;
-  --kv-surface: #1e1b16;
-  --kv-surface-muted: #2a2519;
-  --kv-ink: #fff8e7;
-  --kv-ink-muted: #c9c2b2;
+  --kv-bg: #0b0b0a;
+  --kv-panel: #181816;
+  --kv-surface: #21211e;
+  --kv-surface-muted: #2b2b27;
+  --kv-ink: #edece7;
+  --kv-ink-muted: #9b9a92;
+  --kv-line: #35352f;
+  --kv-line-strong: #edece7;
 
-  --kv-yellow: #ffde59;
-  --kv-pink: #ff7fae;
-  --kv-blue: #70b3ff;
-  --kv-green: #6cf09a;
-  --kv-orange: #ff9a5c;
-  --kv-purple: #c4a8ff;
-  --kv-red: #ff7a7a;
-  --kv-danger: #ff8178;
-  --kv-danger-ink: #141210;
+  --kv-accent: #edece7;
+  --kv-accent-ink: #181816;
 
-  --kv-stripe: rgba(255, 248, 231, 0.06);
-  --kv-dot: rgba(255, 248, 231, 0.14);
+  --kv-yellow: #e0b458;
+  --kv-pink: #d076a6;
+  --kv-blue: #6f9bd8;
+  --kv-green: #66b183;
+  --kv-orange: #d69264;
+  --kv-purple: #a48fd0;
+  --kv-red: #d0685c;
+  --kv-danger: #e08578;
+  --kv-danger-ink: #181816;
+  --kv-success: #66b183;
+  --kv-warning: #e0b458;
+  --kv-info: #6f9bd8;
+
+  --kv-led: #e05548;
+
+  --kv-deck-1: #3a3a36;
+  --kv-deck-2: #232320;
+  --kv-deck-3: #31312d;
+  --kv-deck-edge: #141412;
+  --kv-vinyl: #0a0a0a;
+  --kv-vinyl-sheen: rgba(255, 255, 255, 0.07);
+  --kv-label: #4a4a45;
+
+  --kv-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -14px rgba(0, 0, 0, 0.6);
+  --kv-shadow-lg: 0 30px 70px -28px rgba(0, 0, 0, 0.8);
+  --kv-shadow-pressed: 0 1px 2px rgba(0, 0, 0, 0.5);
 }

@@ -7,7 +7,7 @@ export default function EqBars({ playing = true, className }) {
         <span
           key={i}
           className={cn(
-            'w-[4px] origin-bottom rounded-[1px] border border-kv-ink bg-kv-pink',
+            'w-[3px] origin-bottom rounded-full bg-kv-ink',
             playing ? `animate-eq-${i} h-full` : 'h-1/3'
           )}
         />

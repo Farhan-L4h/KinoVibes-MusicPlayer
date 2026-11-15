@@ -1,309 +1,75 @@
-# 🎵 KinoVibes Music Player
+# KinoVibes Music Player
 
-Modern music player web application dengan Retro UI, dibangun menggunakan React, Firebase, dan Howler.js.
+Pemutar musik web dengan desain monokrom lembut, turntable, dan lirik tersinkron. Menggunakan React 19, Vite 7, Tailwind CSS, Zustand, Howler.js, serta Supabase untuk Auth, PostgreSQL, dan Storage.
 
-![React](https://img.shields.io/badge/React-18.3.1-blue)
-![Firebase](https://img.shields.io/badge/Firebase-10.13.0-orange)
-![Vite](https://img.shields.io/badge/Vite-5.4.2-646CFF)
-![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4.1-38B2AC)
+Aplikasi publik: https://kino-vibes-music-player.vercel.app
 
-## ✨ Features
+## Musik dan batasan
 
-- 🎵 **Music Player** - Play, pause, skip, dan kontrol volume
-- 📝 **Synchronized Lyrics** - Lirik yang sync dengan musik
-- 📁 **Local Storage** - File musik disimpan di project (bukan cloud)
-- ☁️ **Firebase Integration** - User auth, playlists, dan metadata di Firestore
-- 🎨 **Retro UI** - Desain retro dengan animasi smooth
-- 📱 **Responsive** - Works on desktop dan mobile
-- 🔍 **Search** - Cari lagu berdasarkan judul, artis, album, atau genre
-- 📋 **Playlists** - Buat dan manage playlist pribadi
-- ⭐ **Favorites** - Mark lagu favorit
-- 🎼 **Music Library** - Browse dan organize musik
-- 🎤 **Artist Pages** - View artis dan album
-- 🌙 **Dark Mode** - Retro dark theme
+- Unggah musik sendiri, kelola library, playlist, dan favorit. Unduhan hanya untuk file unggahan dari Storage yang dapat diakses pengguna.
+- Pencarian YouTube memakai proxy `api/yt-search.js` dan `api/yt-suggest.js` melalui `youtubei.js`. Pemutaran memakai iframe resmi YouTube yang tetap terlihat, bukan ekstraksi audio. Tidak ada unduhan/offline YouTube atau sinkronisasi akun YouTube Music.
+- Lirik berasal dari unggahan pengguna atau LRCLIB melalui `api/lyrics.js`. LRC bertimestamp mendukung sinkronisasi; teks biasa tidak memiliki timing. Ketersediaan dan kecocokan lirik bergantung pada sumbernya.
+- Audio unggahan memakai streaming native browser melalui Howler HTML5. Retry playback dibatasi; cache pencarian, lirik, dan signed URL memiliki batas ukuran serta masa berlaku. Ini bukan cache audio offline dan tidak menjamin playback tanpa bandwidth yang cukup.
+- Aplikasi tidak melakukan transcoding. Dukungan codec bergantung pada browser; file berbitrate tinggi membutuhkan lebih banyak bandwidth. YouTube dapat membatasi embedding, wilayah, atau autoplay.
 
-## 🏗️ Architecture
+## Pengembangan lokal
 
-### Modern Cloud Storage:
-- **Supabase** (File Storage)
-  - 🎵 Audio files → `music/{userId}/`
-  - 🖼️ Album art → `album-art/{userId}/`
-  - 📝 Lyrics → `lyrics/{userId}/`
-  - ✅ 1GB FREE storage
-  - ✅ Direct frontend upload (no backend!)
-  
-- **Firebase** (Database & Auth)
-  - 👤 User authentication
-  - 📋 Playlists
-  - 🗂️ Music metadata
-  - ⭐ User preferences
+Gunakan Node.js 22.12+ dan npm, serta proyek Supabase. Di root repository, isi `.env` dengan dua variabel wajib berikut menggunakan nilai dari pengaturan API proyek Supabase:
 
-**No backend server needed!** Direct browser → Supabase → Firebase 🚀
-
-📖 **[Baca Supabase Setup Guide](SUPABASE_SETUP.md)**
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+ dan npm
-- Firebase account (Auth & Database)
-- Supabase account (File Storage) - FREE
-- Git
-
-### Installation
-
-1. **Clone repository**
-```bash
-git clone https://github.com/Farhan-L4h/KinoVibes-MusicPlayer.git
-cd KinoVibes-MusicPlayer
+```dotenv
+VITE_SUPABASE_URL=<URL proyek Supabase>
+VITE_SUPABASE_ANON_KEY=<anon/public key proyek Supabase>
 ```
 
-2. **Install dependencies**
+Variabel `VITE_*` masuk ke bundle browser. Jangan gunakan service-role key, password database, atau OAuth client secret; jangan commit `.env`.
+
 ```bash
-npm install
-```
-
-3. **Setup Supabase** (3 menit - File Storage)
-
-- Create account di [supabase.com](https://supabase.com)
-- Create new project
-- Create 3 PUBLIC buckets: `music`, `album-art`, `lyrics`
-- Copy **URL** & **Anon Key** dari Settings → API
-
-4. **Setup Firebase** (Auth & Database)
-
-Create Firebase project di [Firebase Console](https://console.firebase.google.com/)
-
-Enable:
-- ✅ Authentication (Email/Password)
-- ✅ Firestore Database
-- ❌ Storage (TIDAK digunakan - pakai Supabase)
-
-5. **Environment Variables**
-
-Create file `.env` di root folder:
-```env
-# Firebase (Auth & Database)
-VITE_FIREBASE_API_KEY=your_api_key_here
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
-
-# Supabase (File Storage)
-VITE_SUPABASE_URL=https://xxxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGci...
-```
-
-6. **Deploy Firestore Rules**
-```bash
-npm install -g firebase-tools
-firebase login
-firebase use your-project-id
-firebase deploy --only firestore
-```
-
-7. **Run Development Server**
-```bash
+npm ci
 npm run dev
 ```
 
-Open http://localhost:5173
-
-📖 **[Detail Setup](SUPABASE_SETUP.md)** | **[Quick Deploy to Vercel](QUICK_DEPLOY.md)**
-
-## 📁 Project Structure
-
-```
-KinoVibes-MusicPlayer/
-├── public/
-│   ├── music/demo/        # Demo music files (optional)
-│   └── lyrics/            # Demo lyrics (optional)
-├── src/
-│   ├── components/        # React components
-│   │   ├── MusicPlayer.jsx
-│   │   ├── MusicUpload.jsx
-│   │   ├── Lyrics.jsx
-│   │   └── ...
-│   ├── pages/            # Page components
-│   │   ├── Home.jsx
-│   │   ├── Library.jsx
-│   │   ├── Upload.jsx
-│   │   └── ...
-│   ├── services/         # API services
-│   │   ├── musicApi.js   # Music CRUD with Supabase
-│   │   ├── lyricsApi.js  # Lyrics management
-│   │   └── auth.js       # Firebase auth
-│   ├── stores/           # Zustand state management
-│   │   ├── auth.js       # Auth store
-│   │   ├── music.js      # Music player store
-│   │   └── playlist.js   # Playlist store
-│   └── config/
-│       ├── firebase.js   # Firebase config
-│       └── supabase.js   # Supabase config
-├── firestore.rules       # Firestore security rules
-├── firebase.json         # Firebase config
-├── supabase-quick-setup.sql    # Supabase SQL setup
-├── supabase-storage-setup.sql  # Advanced SQL setup
-└── vite.config.js        # Vite config
-```
-
-## 🎯 Usage
-
-### Upload Music
-
-1. Login ke aplikasi
-2. Go to Upload page
-3. Select audio file (.mp3, .wav, .flac, dll)
-4. Select album art (optional)
-5. Select lyrics file (optional - .lrc, .txt, .json)
-6. Fill metadata (title, artist, album, genre)
-7. Click "Upload"
-8. Files automatically uploaded to Supabase Storage
-9. Play from Library! 🎵
-
-### Create Playlist
-
-1. Navigate ke Playlists page
-2. Click "Create Playlist"
-3. Masukkan nama dan deskripsi
-4. Add songs dari library
-
-### View Lyrics
-
-1. Play lagu yang memiliki lyrics
-2. Click "Lyrics" button di player
-3. Lyrics akan auto-scroll sesuai musik
-
-## 🛠️ Tech Stack
-
-- **Frontend Framework**: React 19
-- **Build Tool**: Vite 7
-- **Styling**: TailwindCSS 3
-- **State Management**: Zustand 5
-- **Audio Player**: Howler.js 2
-- **Backend Services**:
-  - Firebase (Authentication + Firestore Database)
-  - Supabase (File Storage)
-- **Routing**: React Router 7
-- **Icons**: Lucide React
-
-## 📦 Main Dependencies
-
-```json
-{
-  "react": "^19.1.1",
-  "firebase": "^12.4.0",
-  "@supabase/supabase-js": "^2.78.0",
-  "howler": "^2.2.4",
-  "zustand": "^5.0.8",
-  "react-router-dom": "^7.9.1",
-  "tailwindcss": "^3.4.17"
-}
-```
-
-## 🔧 Scripts
+Buka alamat yang ditampilkan Vite. `vite-plugin-api.js` melayani `/api/*` saat development; tidak perlu server Express terpisah. Setelah perubahan, jalankan pemeriksaan secara terpisah:
 
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run lint         # Run ESLint
-```
-
-## 🔐 Security
-
-- Firebase Authentication untuk user management
-- Firestore Security Rules untuk data protection
-- Environment variables untuk sensitive data
-- User dapat hanya edit/delete musik mereka sendiri
-- Playlists hanya accessible oleh owner
-
-## 📝 Documentation
-
-- **[SUPABASE_SETUP.md](SUPABASE_SETUP.md)** - Complete Supabase setup guide
-- **[QUICK_DEPLOY.md](QUICK_DEPLOY.md)** - Fast deployment (10 minutes)
-- **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)** - Firebase configuration
-- **[SQL_SETUP_README.md](SQL_SETUP_README.md)** - SQL queries guide
-- **[SUPABASE_MIGRATION.md](SUPABASE_MIGRATION.md)** - Migration overview
-
-## 🐛 Known Issues & Limitations
-
-1. **Storage Limit**: Supabase free tier = 1GB (upgrade untuk lebih)
-2. **Bandwidth**: 2GB/month free (upgrade jika perlu)
-3. **Demo Music**: Optional demo files (not required)
-4. **File Size**: Max 50MB per audio file (configurable)
-
-## 🚀 Deployment
-
-### Deploy to Vercel
-
-```bash
-# 1. Build locally to test
+npm run lint
 npm run build
-
-# 2. Push to GitHub
-git add .
-git commit -m "Ready for deployment"
-git push origin main
-
-# 3. Connect to Vercel
-# - Import GitHub repository
-# - Add environment variables
-# - Deploy!
+node --experimental-vm-modules --test playback-resilience.test.mjs
 ```
 
-### Environment Variables (Vercel)
+Tes terakhir berjalan offline tanpa database atau jaringan: ia memuat modul sumber ke dalam VM dan memeriksa retry audio, pembatalan, cache signed URL/lirik, serta batas penulisan sesi. Perintah tersebut adalah instruksi, bukan laporan hasil pengujian. `npm run preview` hanya menyajikan build frontend, bukan handler API Vercel.
 
-Add these in Vercel Dashboard → Settings → Environment Variables:
+## Setup Supabase
 
-```env
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-```
+**Migrasi keamanan belum divalidasi atau diterapkan pada database live.** Pemilik proyek harus meninjau SQL, memvalidasinya pada lingkungan terpisah, lalu menerapkannya sendiri. Keamanan production belum dapat dinyatakan terverifikasi.
 
-📖 **[Quick Deploy Guide](QUICK_DEPLOY.md)** - Deploy dalam 10 menit!
+### Proyek baru
 
-## 🤝 Contributing
+1. Buat proyek Supabase untuk setup awal, lalu tinjau [supabase-full-schema.sql](supabase-full-schema.sql). File ini menyediakan tabel `users`, `music_library`, `albums`, `playlists`, `playlist_tracks`, `favorites`, serta bucket `music`, `album-art`, dan `lyrics`.
+2. Setelah review, pemilik menjalankan schema melalui Supabase SQL Editor pada database kosong. Schema dasar masih membuat bucket publik dan kebijakan akses longgar; jangan mengisinya dengan data pribadi atau membukanya untuk pengguna sebelum hardening selesai.
+3. Tinjau dan validasi [001_security_hardening.sql](supabase/migrations/001_security_hardening.sql), kemudian terapkan setelah schema. Targetnya membatasi akses berdasarkan pemilik, menjadikan audio dan lirik privat, serta mempertahankan sampul `album-art` publik. Klien menggunakan signed URL sementara untuk audio/lirik privat.
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+### Upgrade database yang sudah ada
 
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Backup terlebih dahulu. Cocokkan schema live, tipe UUID pemilik, `users.id`, kebijakan yang ada, dan path Storage berbentuk `{userId}/nama-file`. Migrasi hardening bukan pembuat schema atau pemindah data lama. Tinjau dampaknya pada playlist lintas pengguna dan bucket lain yang memakai kebijakan global yang dihapus.
 
-## 📄 License
+Jangan menjalankan ulang schema penuh sebagai perbaikan umum: policy/trigger dapat bentrok dan pengaturan bucket dapat kembali publik. [supabase-quick-setup.sql](supabase-quick-setup.sql), [supabase-storage-setup.sql](supabase-storage-setup.sql), dan [supabase_rls_policies.sql](supabase_rls_policies.sql) adalah referensi lama, bukan rangkaian upgrade. Quick setup menghapus kebijakan Storage secara luas; skrip RLS lama memakai `users.uid` dan asumsi ID teks yang berbeda.
 
-This project is licensed under the MIT License.
+Pemilik perlu memeriksa RLS, akses antar-akun, signed URL, serta status bucket pada database tujuan setelah penerapan.
 
-## 👤 Author
+## Auth dan callback
 
-**Farhan-L4h**
-- GitHub: [@Farhan-L4h](https://github.com/Farhan-L4h)
+Aktifkan provider Email di Supabase Auth. Untuk login Google, konfigurasi OAuth client di Google Cloud dan provider Google di Supabase; simpan client secret hanya pada konfigurasi provider.
 
-## 🙏 Acknowledgments
+Salin callback Supabase yang ditampilkan dashboard proyek ke daftar authorized redirect URI Google. Ini berbeda dari allowlist tujuan aplikasi di Supabase **Authentication > URL Configuration**: tetapkan Site URL ke alamat production di atas dan izinkan origin aplikasi yang benar-benar digunakan, dengan `/` di akhir sesuai `redirectTo` pada `src/services/supabaseAuth.js`. Tambahkan alamat lokal/preview aktual bila diperlukan; jangan menebak callback atau mengizinkan semua domain.
 
-- [Howler.js](https://howlerjs.com/) - Audio library
-- [Firebase](https://firebase.google.com/) - Backend services
-- [Tailwind CSS](https://tailwindcss.com/) - CSS framework
-- [Lucide Icons](https://lucide.dev/) - Icon library
-- [Unsplash](https://unsplash.com/) - Demo images
+Alur reset kata sandi mengirim email ke `/reset-password`, jadi tambahkan `https://<domain>/reset-password` (dan padanan lokal/preview) ke Redirect URLs. Tanpa entri itu Supabase menolak tautan reset dan pengguna tidak pernah sampai ke formulir ganti kata sandi.
 
-## 📞 Support
+## Unggah dan gunakan
 
-Untuk pertanyaan dan support, silakan buka issue di GitHub repository.
+Login, buka Upload, pilih audio, isi judul/artis, lalu tambahkan sampul dan lirik `.lrc` atau `.txt` bila ada. Contoh timing LRC: `[00:12.00]Baris lirik`. File masuk langsung ke Supabase Storage, bukan folder `public/`.
 
----
+Schema dasar membatasi audio 50 MiB, sampul 10 MiB, dan lirik 1 MiB. Form audio menerima hingga 60 MiB, tetapi batas dan MIME bucket tetap menentukan keberhasilan upload. Gunakan file yang hak penggunaannya Anda miliki. Aset dalam `public/` tetap publik dan tidak dilindungi migrasi Supabase.
 
-**Made with ❤️ and ☕**
- 
- 
+## Deployment Vercel
+
+Gunakan proyek Vercel yang sudah ada untuk alamat publik di atas. Atur dua variabel Supabase pada environment yang dituju, lalu redeploy setelah mengubah nilainya. Konfigurasi `vercel.json` menggunakan Vite, `npm run build`, output `dist`, handler serverless `api/*.js`, dan rewrite SPA yang mengecualikan `/api/`. Periksa allowlist Auth untuk domain deployment aktual.

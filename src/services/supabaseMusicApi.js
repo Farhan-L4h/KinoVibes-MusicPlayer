@@ -34,11 +34,7 @@ export const transformMusicData = (dbRow) => {
 export const resolveAudioUrl = async (track) => {
   if (!track || track.source === 'youtube') return null;
   if (track.audioPath) {
-    try {
-      return await getSignedUrl(BUCKETS.MUSIC, track.audioPath);
-    } catch {
-      // fall through to legacy public URL
-    }
+    return getSignedUrl(BUCKETS.MUSIC, track.audioPath);
   }
   return track.audioUrl || null;
 };
@@ -123,13 +119,17 @@ export const getAllMusic = async (userId) => {
 };
 
 export const searchMusic = async (searchTerm, userId, limit = 30) => {
-  if (!searchTerm || !searchTerm.trim()) return getAllMusic(userId);
+  const term = (searchTerm || '').trim().slice(0, 200);
+  if (!term) return getAllMusic(userId);
+  // Escape LIKE backslashes, then PostgREST's quoted-value syntax.
+  const pattern = `%${term.replace(/\\/g, '\\\\')}%`;
+  const quotedPattern = `"${pattern.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
   let query = supabase
     .from('music_library')
     .select('*')
     .neq('source', 'youtube')
     .or(
-      `title.ilike.%${searchTerm}%,artist.ilike.%${searchTerm}%,album.ilike.%${searchTerm}%,genre.ilike.%${searchTerm}%`
+      `title.ilike.${quotedPattern},artist.ilike.${quotedPattern},album.ilike.${quotedPattern},genre.ilike.${quotedPattern}`
     )
     .limit(limit);
   if (userId) query = query.eq('user_id', userId);

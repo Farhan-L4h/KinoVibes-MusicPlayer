@@ -156,13 +156,13 @@ const Upload = () => {
   if (done) {
     return (
       <div className="mx-auto max-w-xl">
-        <div className="kv-card animate-pop-in p-6 text-center sm:p-8">
-          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-kv border-3 border-kv-ink bg-kv-green shadow-kv-lg">
-            <CheckCircle2 size={32} className="text-[#0a0a0a]" />
+        <div className="kv-card p-6 text-center sm:p-8">
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-kv-line bg-kv-muted">
+            <CheckCircle2 size={32} className="text-kv-ink" />
           </span>
-          <h1 className="mt-4 font-display text-2xl uppercase">Upload berhasil!</h1>
+          <h1 className="mt-4 font-display text-xl leading-relaxed">Upload berhasil!</h1>
           <p className="mt-2 text-sm text-kv-ink-muted">
-            <strong className="text-kv-ink">{done.title}</strong> — {done.artist} sudah masuk library kamu.
+            <strong className="text-kv-ink">{done.title}</strong>, {done.artist} sudah masuk library kamu.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Button size="sm" onClick={() => actions.play(done, [done])}>
@@ -185,13 +185,13 @@ const Upload = () => {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <header>
-        <h1 className="font-display text-3xl uppercase sm:text-4xl">Upload lagu</h1>
+        <h1 className="font-display text-xl leading-relaxed sm:text-2xl">Upload lagu</h1>
         <p className="mt-1 text-sm text-kv-ink-muted">
-          Lagu milikmu sendiri — bisa diputar, difavoritkan, masuk playlist, dan diunduh.
+          Lagu milikmu sendiri, bisa diputar, difavoritkan, masuk playlist, dan diunduh.
         </p>
       </header>
 
-      <div className="flex items-start gap-2.5 rounded-kv border-3 border-kv-ink bg-kv-blue/20 p-3">
+      <div className="flex items-start gap-2.5 rounded-kv border border-kv-line bg-kv-surface p-3">
         <Info size={18} className="mt-0.5 shrink-0" />
         <p className="text-xs leading-relaxed">
           Lagu dari YouTube hanya bisa distreaming (tidak diunduh) sesuai ketentuan YouTube. Fitur unduh berlaku untuk lagu yang kamu upload di sini.
@@ -211,8 +211,8 @@ const Upload = () => {
             pickAudio(e.dataTransfer.files?.[0]);
           }}
           className={cn(
-            'rounded-kv-lg border-3 border-dashed border-kv-ink p-6 text-center transition-colors',
-            dragging ? 'bg-kv-yellow' : audioFile ? 'bg-kv-green/30' : 'bg-kv-surface'
+            'rounded-kv-lg border border-dashed p-6 text-center transition-colors',
+            dragging ? 'border-kv-ink bg-kv-muted' : audioFile ? 'border-kv-ink bg-kv-panel' : 'border-kv-line bg-kv-surface'
           )}
         >
           <input
@@ -239,7 +239,7 @@ const Upload = () => {
                   setDuration(0);
                 }}
                 aria-label="Hapus file audio"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-kv border-2 border-kv-ink bg-kv-surface hover:bg-kv-red hover:text-white"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-kv-line bg-kv-surface hover:bg-kv-muted hover:text-kv-danger"
               >
                 <X size={16} />
               </button>
@@ -247,8 +247,8 @@ const Upload = () => {
           ) : (
             <button type="button" onClick={() => audioInputRef.current?.click()} className="w-full">
               <UploadIcon size={36} className="mx-auto" />
-              <p className="mt-3 font-display text-sm uppercase">Tarik file audio ke sini</p>
-              <p className="mt-1 text-xs text-kv-ink-muted">atau klik untuk pilih — MP3, WAV, OGG, M4A, AAC, FLAC · maks 60 MB</p>
+              <p className="mt-3 text-sm font-semibold">Tarik file audio ke sini</p>
+              <p className="mt-1 text-xs text-kv-ink-muted">atau klik untuk pilih, MP3, WAV, OGG, M4A, AAC, FLAC · maks 60 MB</p>
             </button>
           )}
         </div>
@@ -262,12 +262,12 @@ const Upload = () => {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="kv-card p-4">
-            <p className="mb-2 font-display text-xs uppercase tracking-wider">Sampul album</p>
+            <p className="mb-2 font-display text-xs">Sampul album</p>
             <input ref={coverInputRef} type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*" className="hidden" onChange={(e) => pickCover(e.target.files?.[0])} />
             <div className="flex items-center gap-3">
-              <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-kv border-3 border-kv-ink bg-kv-muted">
+              <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-kv border border-kv-line bg-kv-muted">
                 {coverPreview ? (
-                  <img src={coverPreview} alt="Pratinjau sampul" className="h-full w-full object-cover" />
+                  <img src={coverPreview} alt="Pratinjau sampul" decoding="async" className="h-full w-full object-cover" />
                 ) : (
                   <span className="flex h-full w-full items-center justify-center"><ImageIcon size={22} className="text-kv-ink-muted" /></span>
                 )}
@@ -277,7 +277,7 @@ const Upload = () => {
                   <ImageIcon size={14} /> Pilih gambar
                 </Button>
                 {coverFile && (
-                  <button type="button" onClick={() => { setCoverFile(null); setCoverPreview(null); }} className="text-left font-mono text-[10px] font-bold uppercase text-kv-danger underline">
+                  <button type="button" onClick={() => { setCoverFile(null); setCoverPreview(null); }} className="text-left min-h-11 font-mono text-xs text-kv-danger underline">
                     Hapus sampul
                   </button>
                 )}
@@ -286,10 +286,10 @@ const Upload = () => {
           </div>
 
           <div className="kv-card p-4">
-            <p className="mb-2 font-display text-xs uppercase tracking-wider">File lirik</p>
+            <p className="mb-2 font-display text-xs">File lirik</p>
             <input ref={lyricsInputRef} type="file" accept=".lrc,.txt" className="hidden" onChange={(e) => pickLyrics(e.target.files?.[0])} />
             <div className="flex items-center gap-3">
-              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-kv border-3 border-kv-ink bg-kv-muted">
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-kv border border-kv-line bg-kv-muted">
                 <FileText size={22} className={lyricsFile ? 'text-kv-ink' : 'text-kv-ink-muted'} />
               </span>
               <div className="flex min-w-0 flex-col gap-1.5">
@@ -298,7 +298,7 @@ const Upload = () => {
                 </Button>
                 {lyricsFile ? (
                   <span className="flex items-center gap-1 truncate font-mono text-[10px] font-bold">
-                    <Badge tone="pink">{lyricsFile.name.split('.').pop().toUpperCase()}</Badge>
+                    <Badge tone="surface">{lyricsFile.name.split('.').pop().toUpperCase()}</Badge>
                     <button type="button" onClick={() => setLyricsFile(null)} aria-label="Hapus file lirik" className="text-kv-danger underline">hapus</button>
                   </span>
                 ) : (
@@ -315,14 +315,14 @@ const Upload = () => {
               <div key={s.key} className="flex flex-1 items-center gap-2">
                 <span
                   className={cn(
-                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-kv border-2 border-kv-ink font-mono text-xs font-bold',
-                    i < stageIndex ? 'bg-kv-green text-[#0a0a0a]' : i === stageIndex ? 'bg-kv-yellow text-[#0a0a0a]' : 'bg-kv-surface text-kv-ink-muted'
+                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-kv-line font-mono text-xs',
+                    i < stageIndex ? 'bg-kv-muted text-kv-ink' : i === stageIndex ? 'bg-kv-ink text-kv-panel' : 'bg-kv-surface text-kv-ink-muted'
                   )}
                 >
                   {i < stageIndex ? <CheckCircle2 size={14} /> : i === stageIndex ? <Loader2 size={14} className="animate-spin" /> : i + 1}
                 </span>
-                <span className="hidden font-mono text-[10px] font-bold uppercase tracking-wider sm:block">{s.label}</span>
-                {i < STAGES.length - 1 && <span className="h-[3px] flex-1 bg-kv-ink/20" />}
+                <span className="hidden font-mono text-[10px] sm:block">{s.label}</span>
+                {i < STAGES.length - 1 && <span className="h-px flex-1 bg-kv-line" />}
               </div>
             ))}
           </div>

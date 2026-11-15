@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Music2 } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useAuthStore } from '../../stores/auth';
 import { initials } from '../../lib/utils';
 import ThemeToggle from './ThemeToggle';
@@ -11,43 +11,43 @@ const TopBar = () => {
     user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kamu';
 
   return (
-    <header className="sticky top-0 z-30 border-b-3 border-kv-ink bg-kv-bg/95 backdrop-blur-sm">
-      <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-2 lg:hidden" aria-label="KinoVibe beranda">
-          <span className="flex h-9 w-9 items-center justify-center rounded-kv border-3 border-kv-ink bg-kv-yellow shadow-kv">
-            <Music2 size={17} className="text-[#0a0a0a]" />
-          </span>
-          <span className="font-display text-lg uppercase tracking-tight">KinoVibe</span>
-        </Link>
+    <header className="flex shrink-0 items-center gap-3 px-4 py-4 sm:px-6">
+      <Link
+        to="/"
+        className="font-display text-base font-bold tracking-tight text-kv-ink sm:text-lg"
+        aria-label="KinoVibe beranda"
+      >
+        KINOVIBE
+      </Link>
 
+      <button
+        type="button"
+        onClick={() => navigate('/search')}
+        className="kv-press ml-1 hidden h-10 w-full max-w-sm items-center gap-2.5 rounded-full border-[1.5px] border-kv-line-strong bg-kv-surface px-4 text-left text-kv-ink-muted sm:flex"
+      >
+        <Search size={15} />
+        <span className="flex-1 truncate font-mono text-xs">Cari lagu, artis…</span>
+        <kbd className="rounded border border-kv-line px-1.5 font-mono text-[10px] font-bold">/</kbd>
+      </button>
+
+      <div className="ml-auto flex items-center gap-1.5">
         <button
           type="button"
           onClick={() => navigate('/search')}
-          className="hidden h-11 max-w-md flex-1 items-center gap-2.5 rounded-kv border-3 border-kv-ink bg-kv-surface px-3 text-left text-kv-ink-muted shadow-kv transition-colors hover:bg-kv-muted lg:flex"
+          aria-label="Cari lagu"
+          className="kv-press flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] border-kv-line bg-kv-surface text-kv-ink hover:bg-kv-muted sm:hidden"
         >
           <Search size={17} />
-          <span className="flex-1 text-sm font-semibold">Cari lagu di YouTube Music atau library kamu…</span>
-          <kbd className="rounded border-2 border-kv-ink bg-kv-muted px-1.5 font-mono text-xs font-bold">/</kbd>
         </button>
-
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => navigate('/search')}
-            aria-label="Cari lagu"
-            className="kv-press flex h-11 w-11 items-center justify-center rounded-kv border-3 border-kv-ink bg-kv-surface shadow-kv lg:hidden"
-          >
-            <Search size={18} />
-          </button>
-          <ThemeToggle />
-          <Link
-            to="/profile"
-            aria-label="Buka profil"
-            className="flex h-11 w-11 items-center justify-center rounded-kv border-3 border-kv-ink bg-kv-blue font-display text-sm text-[#0a0a0a] shadow-kv lg:hidden"
-          >
-            {initials(displayName)}
-          </Link>
-        </div>
+        <ThemeToggle />
+        <Link
+          to="/profile"
+          aria-label="Buka profil"
+          title="Profil"
+          className="kv-press flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] border-kv-line-strong bg-kv-ink font-display text-xs text-kv-panel lg:hidden"
+        >
+          {initials(displayName)}
+        </Link>
       </div>
     </header>
   );

@@ -41,26 +41,26 @@ const BrowseCard = ({ item, onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    className="kv-press rounded-kv border-3 border-kv-ink bg-kv-surface p-3 text-left shadow-kv"
+    className="group min-w-0 rounded-kv border border-kv-line bg-kv-surface p-3 text-left transition-colors hover:border-kv-ink"
   >
-    <span className={`relative mb-3 block aspect-square w-full overflow-hidden border-3 border-kv-ink bg-kv-muted ${item.type === 'artist' ? 'rounded-full' : 'rounded-kv'}`}>
+    <span className={`relative mb-3 block aspect-square w-full overflow-hidden border border-kv-line bg-kv-muted ${item.type === 'artist' ? 'rounded-full' : 'rounded-kv'}`}>
       {item.thumbnail ? (
-        <img src={item.thumbnail} alt="" loading="lazy" className="h-full w-full object-cover" />
+        <img src={item.thumbnail} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover grayscale group-hover:grayscale-0 group-focus-visible:grayscale-0" />
       ) : (
-        <span className="kv-dots flex h-full w-full items-center justify-center bg-kv-purple">
-          {item.type === 'artist' ? <UserRound size={44} className="text-[#0a0a0a]" /> : <Disc3 size={44} className="text-[#0a0a0a]" />}
+        <span className="flex h-full w-full items-center justify-center bg-kv-muted">
+          {item.type === 'artist' ? <UserRound size={44} className="text-kv-ink-muted" /> : <Disc3 size={44} className="text-kv-ink-muted" />}
         </span>
       )}
     </span>
-    <span className="block truncate font-display text-sm uppercase leading-tight">{item.title}</span>
+    <span className="block truncate text-sm font-semibold leading-tight">{item.title}</span>
     <span className="mt-0.5 block truncate text-xs text-kv-ink-muted">
       {item.type === 'artist' ? item.subscribers || item.subtitle || 'Artis' : item.artist || item.subtitle || ''}
     </span>
     <span className="mt-1.5 flex flex-wrap gap-1">
       {item.year && <Badge tone="surface">{item.year}</Badge>}
-      {item.itemCount && <Badge tone="yellow">{item.itemCount}</Badge>}
-      {item.type === 'album' && <Badge tone="blue">Album</Badge>}
-      {item.type === 'artist' && <Badge tone="pink">Artis</Badge>}
+      {item.itemCount && <Badge tone="surface">{item.itemCount}</Badge>}
+      {item.type === 'album' && <Badge tone="surface">Album</Badge>}
+      {item.type === 'artist' && <Badge tone="surface">Artis</Badge>}
     </span>
   </button>
 );
@@ -77,6 +77,7 @@ const Search = () => {
   const [items, setItems] = useState([]);
   const [state, setState] = useState(initialQ ? 'loading' : 'idle');
   const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
   const [suggestions, setSuggestions] = useState([]);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [history, setHistory] = useState(readHistory);
@@ -136,7 +137,7 @@ const Search = () => {
     return () => {
       cancelled = true;
     };
-  }, [query, src, type, user?.id]);
+  }, [query, src, type, user?.id, retry]);
 
   const fetchSuggestions = useMemo(
     () =>
@@ -171,7 +172,7 @@ const Search = () => {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <header>
-        <h1 className="font-display text-3xl uppercase sm:text-4xl">Cari musik</h1>
+        <h1 className="font-display text-xl leading-relaxed sm:text-2xl">Cari musik</h1>
         <p className="mt-1 text-sm text-kv-ink-muted">
           Jutaan lagu dari YouTube Music, plus koleksi upload kamu sendiri.
         </p>
@@ -186,7 +187,7 @@ const Search = () => {
           className="flex gap-2"
           role="search"
         >
-          <div className="relative flex-1">
+          <div className="relative min-w-0 flex-1">
             <SearchIcon size={19} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-kv-ink-muted" />
             <input
               ref={inputRef}
@@ -204,7 +205,7 @@ const Search = () => {
               placeholder="Judul lagu, artis, atau album…"
               aria-label="Kata kunci pencarian"
               autoComplete="off"
-              className="min-h-[52px] w-full rounded-kv border-3 border-kv-ink bg-kv-surface py-3 pl-11 pr-10 text-base font-semibold text-kv-ink shadow-kv placeholder:text-kv-ink-muted/60 focus-visible:outline focus-visible:outline-3 focus-visible:outline-kv-blue"
+              className="min-h-[52px] w-full rounded-full border border-kv-line bg-kv-surface py-3 pl-11 pr-14 text-base text-kv-ink placeholder:text-kv-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-kv-ink"
             />
             {input && (
               <button
@@ -217,26 +218,26 @@ const Search = () => {
                   inputRef.current?.focus();
                 }}
                 aria-label="Bersihkan pencarian"
-                className="absolute right-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded border-2 border-kv-ink bg-kv-muted hover:bg-kv-red hover:text-white"
+                className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full hover:bg-kv-muted"
               >
                 <X size={14} />
               </button>
             )}
           </div>
-          <Button type="submit" size="lg" className="shrink-0">
+          <Button type="submit" size="lg" className="shrink-0" aria-label="Cari musik">
             <SearchIcon size={18} />
             <span className="hidden sm:inline">Cari</span>
           </Button>
         </form>
 
         {suggestOpen && suggestions.length > 0 && (
-          <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-kv border-3 border-kv-ink bg-kv-surface shadow-kv-lg sm:right-24">
+          <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-kv border border-kv-line bg-kv-surface shadow-kv-lg sm:right-24">
             {suggestions.map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => runSearch(s)}
-                className="flex min-h-[44px] w-full items-center gap-2.5 border-b-2 border-kv-ink/10 px-3.5 py-2 text-left text-sm font-semibold last:border-b-0 hover:bg-kv-yellow hover:text-[#0a0a0a]"
+                className="flex min-h-[44px] w-full items-center gap-2.5 border-b border-kv-line px-3.5 py-2 text-left text-sm last:border-b-0 hover:bg-kv-muted"
               >
                 <SearchIcon size={14} className="shrink-0 text-kv-ink-muted" />
                 <span className="truncate">{s}</span>
@@ -263,7 +264,7 @@ const Search = () => {
           {history.length > 0 && (
             <section>
               <div className="mb-2.5 flex items-center justify-between">
-                <h2 className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-kv-ink-muted">
+                <h2 className="flex items-center gap-2 font-mono text-xs text-kv-ink-muted">
                   <Clock3 size={14} /> Terakhir dicari
                 </h2>
                 <button
@@ -272,7 +273,7 @@ const Search = () => {
                     localStorage.removeItem(HISTORY_KEY);
                     setHistory([]);
                   }}
-                  className="font-mono text-[10px] font-bold uppercase tracking-wider text-kv-ink-muted underline hover:text-kv-danger"
+                  className="min-h-11 font-mono text-xs text-kv-ink-muted underline hover:text-kv-danger"
                 >
                   Hapus
                 </button>
@@ -283,7 +284,7 @@ const Search = () => {
                     key={h}
                     type="button"
                     onClick={() => runSearch(h)}
-                    className="kv-press min-h-[40px] rounded-kv border-3 border-kv-ink bg-kv-surface px-3 py-1.5 text-sm font-bold shadow-kv hover:bg-kv-muted"
+                    className="min-h-11 rounded-full border border-kv-line bg-transparent px-4 py-2 text-sm hover:bg-kv-surface"
                   >
                     {h}
                   </button>
@@ -292,18 +293,16 @@ const Search = () => {
             </section>
           )}
           <section>
-            <h2 className="mb-2.5 flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-kv-ink-muted">
+            <h2 className="mb-2.5 flex items-center gap-2 font-mono text-xs text-kv-ink-muted">
               <Youtube size={14} /> Mulai jelajahi
             </h2>
             <div className="flex flex-wrap gap-2.5">
-              {EXPLORE.map((q, i) => (
+              {EXPLORE.map((q) => (
                 <button
                   key={q}
                   type="button"
                   onClick={() => runSearch(q, 'yt', 'song')}
-                  className={`kv-press min-h-[44px] rounded-kv border-3 border-kv-ink px-4 py-2 font-display text-xs uppercase tracking-wide text-[#0a0a0a] shadow-kv ${
-                    ['bg-kv-pink', 'bg-kv-blue', 'bg-kv-green', 'bg-kv-orange', 'bg-kv-purple', 'bg-kv-yellow'][i % 6]
-                  }`}
+                  className="min-h-11 rounded-full border border-kv-line-strong px-4 py-2 text-xs hover:bg-kv-ink hover:text-kv-panel"
                 >
                   {q}
                 </button>
@@ -315,7 +314,7 @@ const Search = () => {
 
       {state === 'loading' && (
         <div>
-          <p className="mb-3 flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-kv-ink-muted">
+          <p className="mb-3 flex items-center gap-2 font-mono text-xs text-kv-ink-muted">
             <Loader2 size={14} className="animate-spin" /> Mencari "{query}"…
           </p>
           {gridMode ? (
@@ -335,7 +334,7 @@ const Search = () => {
           icon={Youtube}
           title="Pencarian gagal"
           description={error}
-          action={<Button size="sm" onClick={() => runSearch(input)}>Coba lagi</Button>}
+          action={<Button size="sm" onClick={() => { runSearch(input); setRetry((n) => n + 1); }}>Coba lagi</Button>}
         />
       )}
 
@@ -350,7 +349,7 @@ const Search = () => {
           }
           action={
             src === 'library' ? (
-              <Button size="sm" variant="pink" onClick={() => runSearch(query, 'yt', 'song')}>
+              <Button size="sm" variant="secondary" onClick={() => runSearch(query, 'yt', 'song')}>
                 <Youtube size={15} /> Cari di YouTube
               </Button>
             ) : undefined
@@ -360,7 +359,7 @@ const Search = () => {
 
       {state === 'ready' && tracks.length > 0 && (
         <section>
-          <p className="mb-3 font-mono text-xs font-bold uppercase tracking-[0.2em] text-kv-ink-muted">
+          <p className="mb-3 font-mono text-xs text-kv-ink-muted">
             {tracks.length} hasil untuk "{query}"
           </p>
           <div className="space-y-1.5">
@@ -373,8 +372,8 @@ const Search = () => {
 
       {state === 'ready' && browseItems.length > 0 && (
         <section>
-          <p className="mb-3 font-mono text-xs font-bold uppercase tracking-[0.2em] text-kv-ink-muted">
-            {browseItems.length} {type === 'album' ? 'album' : 'artis'} untuk "{query}" — klik untuk lihat lagunya
+          <p className="mb-3 font-mono text-xs text-kv-ink-muted">
+            {browseItems.length} {type === 'album' ? 'album' : 'artis'} untuk "{query}", pilih untuk lihat lagunya
           </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {browseItems.map((item, i) => (

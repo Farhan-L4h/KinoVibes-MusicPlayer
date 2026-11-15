@@ -63,12 +63,12 @@ const Register = () => {
 
   return (
     <AuthShell>
-      <div className="kv-card animate-pop-in p-6 sm:p-8">
-        <h2 className="font-display text-3xl uppercase">Daftar</h2>
+      <div className="rounded-kv-lg border border-kv-line bg-kv-surface p-6 sm:p-8">
+        <h2 className="font-display text-2xl leading-relaxed">Daftar</h2>
         <p className="mt-1 text-sm text-kv-ink-muted">Bikin akun, mulai koleksi musik kamu.</p>
 
         {error && (
-          <div role="alert" className="mt-4 rounded-kv border-3 border-kv-ink bg-kv-red px-3 py-2.5 text-sm font-bold text-white">
+          <div role="alert" className="mt-4 rounded-kv border border-kv-line bg-kv-panel px-3 py-2.5 text-sm text-kv-danger">
             {error}
           </div>
         )}
@@ -118,7 +118,7 @@ const Register = () => {
 
         <p className="mt-6 text-center text-sm text-kv-ink-muted">
           Sudah punya akun?{' '}
-          <Link to="/login" className="font-bold text-kv-ink underline decoration-kv-blue decoration-3 underline-offset-2">
+          <Link to="/login" className="px-1 py-4 font-bold text-kv-ink underline decoration-kv-line-strong underline-offset-2">
             Masuk
           </Link>
         </p>

@@ -26,8 +26,20 @@ const TrackMenu = ({ track, onDelete }) => {
       if (menuRef.current?.contains(e.target) || btnRef.current?.contains(e.target)) return;
       setOpen(false);
     };
+    menuRef.current?.querySelector('button')?.focus();
     const onKey = (e) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        btnRef.current?.focus();
+      }
+      if (e.key === 'Tab') setOpen(false);
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const items = [...(menuRef.current?.querySelectorAll('button') || [])];
+        const index = items.indexOf(document.activeElement);
+        const next = (index + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+        items[next]?.focus();
+      }
     };
     const onScroll = () => setOpen(false);
     document.addEventListener('mousedown', close);
@@ -56,6 +68,7 @@ const TrackMenu = ({ track, onDelete }) => {
 
   const run = (fn) => () => {
     setOpen(false);
+    btnRef.current?.focus();
     fn();
   };
 
@@ -65,6 +78,7 @@ const TrackMenu = ({ track, onDelete }) => {
   const Item = ({ icon: Icon, label, onClick, danger }) => (
     <button
       type="button"
+      role="menuitem"
       onClick={onClick}
       className={`flex min-h-[44px] w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-bold hover:bg-kv-muted ${
         danger ? 'text-kv-danger' : 'text-kv-ink'
@@ -83,8 +97,9 @@ const TrackMenu = ({ track, onDelete }) => {
         onClick={toggle}
         aria-label={`Menu untuk ${track.title}`}
         aria-expanded={open}
+        aria-haspopup="menu"
         title="Menu lagu"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-kv border-2 border-kv-ink bg-kv-surface hover:bg-kv-yellow"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-kv-line bg-transparent hover:bg-kv-muted"
       >
         <MoreHorizontal size={16} />
       </button>
@@ -93,10 +108,10 @@ const TrackMenu = ({ track, onDelete }) => {
           <div
             ref={menuRef}
             role="menu"
-            className="fixed z-[85] w-[248px] animate-pop-in overflow-hidden rounded-kv border-3 border-kv-ink bg-kv-surface py-1 shadow-kv-lg"
+            className="fixed z-[85] max-h-[calc(100dvh-16px)] w-[248px] overflow-y-auto rounded-kv border border-kv-line bg-kv-surface py-1 shadow-kv-lg"
             style={{ top: pos.top, left: pos.left }}
           >
-            <div className="border-b-2 border-kv-ink bg-kv-muted px-3 py-2">
+            <div className="border-b border-kv-line bg-kv-panel px-3 py-2">
               <p className="truncate text-xs font-bold">{track.title}</p>
               <p className="truncate text-[11px] text-kv-ink-muted">{track.artist}</p>
             </div>

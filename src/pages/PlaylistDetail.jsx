@@ -43,6 +43,7 @@ const PlaylistDetail = () => {
 
   const load = async () => {
     setLoading(true);
+    setNotFound(false);
     try {
       const data = await getPlaylistWithTracks(id);
       setPlaylist(data);
@@ -115,7 +116,7 @@ const PlaylistDetail = () => {
   if (loading) {
     return (
       <div className="mx-auto max-w-5xl space-y-4">
-        <div className="h-8 w-40 animate-pulse rounded-kv border-3 border-kv-ink bg-kv-muted" />
+        <div className="h-8 w-40 motion-safe:animate-pulse rounded-kv bg-kv-muted" />
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => <TrackRowSkeleton key={i} />)}
         </div>
@@ -128,9 +129,9 @@ const PlaylistDetail = () => {
       <div className="mx-auto max-w-3xl">
         <EmptyState
           icon={ListMusic}
-          title="Playlist tidak ditemukan"
-          description="Playlist mungkin sudah dihapus."
-          action={<Button size="sm" onClick={() => navigate('/playlists')}><ArrowLeft size={15} /> Kembali</Button>}
+          title="Playlist belum tersedia"
+          description="Playlist mungkin sudah dihapus, atau koneksi sedang terputus."
+          action={<div className="flex flex-wrap justify-center gap-2"><Button size="sm" onClick={load}>Coba lagi</Button><Button size="sm" variant="secondary" onClick={() => navigate('/playlists')}><ArrowLeft size={15} /> Kembali</Button></div>}
         />
       </div>
     );
@@ -143,18 +144,18 @@ const PlaylistDetail = () => {
       <button
         type="button"
         onClick={() => navigate('/playlists')}
-        className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-wider text-kv-ink-muted hover:text-kv-ink"
+        className="flex items-center gap-1.5 min-h-11 font-mono text-xs text-kv-ink-muted hover:text-kv-ink"
       >
         <ArrowLeft size={14} /> Semua playlist
       </button>
 
-      <header className="kv-card kv-stripes flex flex-col gap-5 p-5 sm:flex-row sm:items-end sm:p-6">
-        <span className="kv-dots flex h-36 w-36 shrink-0 items-center justify-center rounded-kv border-3 border-kv-ink bg-kv-green shadow-kv-lg sm:h-44 sm:w-44">
-          <ListMusic size={56} className="text-[#0a0a0a]" />
+      <header className="kv-card flex flex-col gap-5 p-5 sm:flex-row sm:items-end sm:p-6">
+        <span className="flex h-36 w-36 shrink-0 items-center justify-center rounded-kv border border-kv-line bg-kv-muted sm:h-44 sm:w-44">
+          <ListMusic size={56} className="text-kv-ink-muted" />
         </span>
         <div className="min-w-0 flex-1">
-          <Badge tone="purple">Playlist</Badge>
-          <h1 className="mt-2 font-display text-3xl uppercase leading-tight sm:text-4xl">{playlist.name}</h1>
+          <Badge tone="surface">Playlist</Badge>
+          <h1 className="mt-2 break-words font-display text-xl leading-relaxed sm:text-2xl">{playlist.name}</h1>
           {playlist.description && <p className="mt-1 text-sm text-kv-ink-muted">{playlist.description}</p>}
           <p className="mt-1 font-mono text-xs text-kv-ink-muted">
             {tracks.length} lagu · {formatTotalDuration(totalDuration)}
@@ -163,13 +164,13 @@ const PlaylistDetail = () => {
             <Button size="sm" onClick={() => actions.playAll(tracks)} disabled={tracks.length === 0}>
               <Play size={15} /> Putar semua
             </Button>
-            <Button size="sm" variant="pink" onClick={() => actions.shuffleAll(tracks)} disabled={tracks.length === 0}>
+            <Button size="sm" variant="secondary" onClick={() => actions.shuffleAll(tracks)} disabled={tracks.length === 0}>
               <Shuffle size={15} /> Acak
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setRenaming(true)}>
               <Pencil size={15} /> Edit
             </Button>
-            <Button size="sm" variant="danger" onClick={() => setDeleting(true)}>
+            <Button size="sm" variant="ghost" onClick={() => setDeleting(true)}>
               <Trash2 size={15} /> Hapus
             </Button>
           </div>
@@ -180,7 +181,7 @@ const PlaylistDetail = () => {
         <EmptyState
           icon={ListMusic}
           title="Playlist kosong"
-          description="Tambahkan lagu lewat menu ⋯ pada lagu mana pun — dari library atau hasil pencarian YouTube."
+          description="Tambahkan lagu lewat menu lagu dari library atau hasil pencarian YouTube."
           action={<Button size="sm" onClick={() => navigate('/search')}><Plus size={15} /> Cari lagu</Button>}
         />
       ) : (

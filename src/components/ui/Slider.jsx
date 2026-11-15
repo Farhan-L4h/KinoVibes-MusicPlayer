@@ -1,6 +1,6 @@
 import { cn } from '../../lib/utils';
 
-export default function Slider({ value = 0, max = 100, className, fill = 'var(--kv-pink)', ...props }) {
+export default function Slider({ value = 0, max = 100, className, fill = 'var(--kv-ink)', ...props }) {
   const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
   return (
     <input

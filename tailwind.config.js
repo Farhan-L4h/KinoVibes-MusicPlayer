@@ -1,4 +1,15 @@
 /** @type {import('tailwindcss').Config} */
+
+// Tokens are CSS variables, so Tailwind cannot compute alpha itself. color-mix
+// keeps `bg-kv-ink/70` working instead of silently emitting no rule at all.
+const kv = (name) => ({ opacityValue, opacityVariable }) => {
+  const base = `var(--kv-${name})`;
+  const alpha = Number(opacityValue);
+  if (Number.isFinite(alpha)) return `color-mix(in oklab, ${base} ${alpha * 100}%, transparent)`;
+  if (opacityVariable) return `color-mix(in oklab, ${base} calc(var(${opacityVariable}) * 100%), transparent)`;
+  return base;
+};
+
 export default {
   darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,jsx}'],
@@ -6,24 +17,31 @@ export default {
     extend: {
       colors: {
         kv: {
-          bg: 'var(--kv-bg)',
-          surface: 'var(--kv-surface)',
-          muted: 'var(--kv-surface-muted)',
-          ink: 'var(--kv-ink)',
-          'ink-muted': 'var(--kv-ink-muted)',
-          yellow: 'var(--kv-yellow)',
-          pink: 'var(--kv-pink)',
-          blue: 'var(--kv-blue)',
-          green: 'var(--kv-green)',
-          orange: 'var(--kv-orange)',
-          purple: 'var(--kv-purple)',
-          red: 'var(--kv-red)',
-          danger: 'var(--kv-danger)',
-          accent: 'var(--kv-accent)',
+          bg: kv('bg'),
+          panel: kv('panel'),
+          surface: kv('surface'),
+          muted: kv('surface-muted'),
+          ink: kv('ink'),
+          'ink-muted': kv('ink-muted'),
+          line: kv('line'),
+          'line-strong': kv('line-strong'),
+          yellow: kv('yellow'),
+          pink: kv('pink'),
+          blue: kv('blue'),
+          green: kv('green'),
+          orange: kv('orange'),
+          purple: kv('purple'),
+          red: kv('red'),
+          danger: kv('danger'),
+          accent: kv('accent'),
+          'accent-ink': kv('accent-ink'),
+          success: kv('success'),
+          warning: kv('warning'),
+          info: kv('info'),
         },
       },
       fontFamily: {
-        display: ['"Archivo Black"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Silkscreen', '"Space Mono"', 'ui-monospace', 'monospace'],
         body: ['Archivo', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['"Space Mono"', 'ui-monospace', 'monospace'],
       },
@@ -32,6 +50,7 @@ export default {
       },
       spacing: {
         'kv-sidebar': 'var(--kv-sidebar-w)',
+        'kv-rail': 'var(--kv-rail-w)',
         'kv-miniplayer': 'var(--kv-miniplayer-h)',
         'kv-bottomnav': 'var(--kv-bottomnav-h)',
       },
@@ -43,14 +62,15 @@ export default {
       borderRadius: {
         kv: 'var(--kv-radius)',
         'kv-lg': 'var(--kv-radius-lg)',
+        'kv-panel': 'var(--kv-radius-panel)',
       },
       transitionTimingFunction: {
-        kv: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+        kv: 'cubic-bezier(0.22, 0.9, 0.28, 1)',
       },
       animation: {
-        'pop-in': 'popIn 0.18s cubic-bezier(0.2, 0.8, 0.2, 1)',
-        'slide-up': 'slideUp 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)',
-        'fade-in': 'fadeIn 0.2s ease-out',
+        'pop-in': 'popIn 0.22s cubic-bezier(0.22, 0.9, 0.28, 1)',
+        'slide-up': 'slideUp 0.32s cubic-bezier(0.22, 0.9, 0.28, 1)',
+        'fade-in': 'fadeIn 0.25s ease-out',
         'eq-1': 'eq 0.9s ease-in-out infinite',
         'eq-2': 'eq 0.7s ease-in-out infinite 0.15s',
         'eq-3': 'eq 1.1s ease-in-out infinite 0.3s',
@@ -59,11 +79,11 @@ export default {
       },
       keyframes: {
         popIn: {
-          '0%': { transform: 'scale(0.92)', opacity: '0' },
-          '100%': { transform: 'scale(1)', opacity: '1' },
+          '0%': { transform: 'scale(0.96) translateY(6px)', opacity: '0' },
+          '100%': { transform: 'scale(1) translateY(0)', opacity: '1' },
         },
         slideUp: {
-          '0%': { transform: 'translateY(16px)', opacity: '0' },
+          '0%': { transform: 'translateY(24px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
         fadeIn: {

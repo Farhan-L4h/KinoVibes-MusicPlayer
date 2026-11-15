@@ -32,17 +32,17 @@ const TrackRow = ({
   return (
     <div
       className={cn(
-        'group flex items-center gap-2 rounded-kv border-3 p-2 transition-colors duration-150 sm:gap-3',
+        'group flex flex-wrap items-center gap-2 rounded-kv border p-2 transition-colors duration-150 sm:flex-nowrap sm:gap-3',
         active
-          ? 'border-kv-ink bg-kv-yellow shadow-kv'
-          : 'border-transparent hover:border-kv-ink hover:bg-kv-surface hover:shadow-kv'
+          ? 'border-kv-line bg-kv-surface'
+          : 'border-transparent hover:border-kv-line hover:bg-kv-surface'
       )}
     >
       <button
         type="button"
         onClick={() => actions.play(track, list)}
         aria-label={`Putar ${track.title}`}
-        className="flex h-9 w-8 shrink-0 items-center justify-center font-mono text-sm font-bold text-kv-ink-muted"
+        className="flex h-11 w-8 shrink-0 items-center justify-center font-mono text-sm font-bold text-kv-ink-muted"
       >
         {active ? (
           <EqBars playing={isPlaying} />
@@ -59,9 +59,9 @@ const TrackRow = ({
         onClick={() => actions.play(track, list)}
         className="flex min-w-0 flex-[2] items-center gap-3 text-left"
       >
-        <span className="block h-12 w-12 shrink-0 overflow-hidden rounded-kv border-2 border-kv-ink bg-kv-muted">
+        <span className="block h-12 w-12 shrink-0 overflow-hidden rounded-kv border border-kv-line bg-kv-muted">
           {track.albumArt ? (
-            <img src={track.albumArt} alt="" loading="lazy" className="h-full w-full object-cover" />
+            <img src={track.albumArt} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
           ) : (
             <span className="flex h-full w-full items-center justify-center text-kv-ink-muted">
               <Music2 size={18} />
@@ -70,11 +70,11 @@ const TrackRow = ({
         </span>
         <span className="min-w-0">
           <span className="flex items-center gap-2">
-            <span className={cn('truncate font-bold leading-tight', active && 'text-[#0a0a0a] dark:text-kv-ink')}>
+            <span className="truncate text-sm font-semibold leading-tight text-kv-ink">
               {track.title}
             </span>
             {track.source === 'youtube' && (
-              <span className="shrink-0 rounded border border-kv-ink bg-kv-red px-1 font-mono text-[9px] font-bold uppercase text-white">
+              <span className="shrink-0 rounded border border-kv-line bg-kv-panel px-1 font-mono text-[9px] text-kv-ink">
                 YT
               </span>
             )}
@@ -100,7 +100,7 @@ const TrackRow = ({
             onClick={onMoveUp}
             disabled={isFirst}
             aria-label="Pindah ke atas"
-            className="flex h-8 w-8 items-center justify-center rounded border-2 border-kv-ink bg-kv-surface hover:bg-kv-muted disabled:opacity-30"
+            className="flex h-11 w-11 items-center justify-center rounded border border-kv-line bg-kv-surface hover:bg-kv-muted disabled:opacity-30"
           >
             <ChevronUp size={14} />
           </button>
@@ -111,7 +111,7 @@ const TrackRow = ({
             onClick={onMoveDown}
             disabled={isLast}
             aria-label="Pindah ke bawah"
-            className="flex h-8 w-8 items-center justify-center rounded border-2 border-kv-ink bg-kv-surface hover:bg-kv-muted disabled:opacity-30"
+            className="flex h-11 w-11 items-center justify-center rounded border border-kv-line bg-kv-surface hover:bg-kv-muted disabled:opacity-30"
           >
             <ChevronDown size={14} />
           </button>
@@ -123,10 +123,10 @@ const TrackRow = ({
           aria-pressed={fav}
           title={fav ? 'Hapus dari favorit' : 'Tambah ke favorit'}
           className={cn(
-            'flex h-9 w-9 items-center justify-center rounded-kv border-2 border-kv-ink',
+            'flex h-11 w-11 items-center justify-center rounded-kv border border-kv-line',
             fav
-              ? 'bg-kv-pink text-[#0a0a0a]'
-              : 'bg-kv-surface text-kv-ink opacity-100 hover:bg-kv-pink hover:text-[#0a0a0a] lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100'
+              ? 'bg-kv-ink text-kv-panel'
+              : 'bg-transparent text-kv-ink hover:bg-kv-muted'
           )}
         >
           <Heart size={16} fill={fav ? 'currentColor' : 'none'} />
@@ -137,7 +137,7 @@ const TrackRow = ({
             onClick={onRemove}
             aria-label={removeLabel}
             title={removeLabel}
-            className="flex h-9 w-9 items-center justify-center rounded-kv border-2 border-kv-ink bg-kv-surface hover:bg-kv-red hover:text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-kv border border-kv-line bg-kv-surface hover:bg-kv-muted hover:text-kv-danger"
           >
             <X size={16} />
           </button>

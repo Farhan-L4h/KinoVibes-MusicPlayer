@@ -37,20 +37,22 @@ const ManualLyricsModal = ({ open, track, userId, onClose, onSaved }) => {
       <div className="space-y-3">
         <p className="text-sm text-kv-ink-muted">
           Tempel lirik untuk <strong className="text-kv-ink">{track?.title}</strong>. Tambahkan
-          timestamp <code className="rounded border border-kv-ink bg-kv-muted px-1 font-mono text-xs">[mm:ss.xx]</code> di
+          timestamp <code className="rounded border border-kv-line bg-kv-muted px-1 font-mono text-xs">[mm:ss.xx]</code> di
           awal baris supaya lirik tersinkron dengan lagu.
         </p>
+        <label htmlFor="manual-lyrics" className="block text-sm font-semibold">Teks lirik</label>
         <textarea
+          id="manual-lyrics"
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={12}
           placeholder={'[00:12.50] Baris pertama lirik\n[00:17.20] Baris kedua lirik\n\nAtau tempel teks biasa tanpa timestamp.'}
-          className="w-full rounded-kv border-3 border-kv-ink bg-kv-surface p-3 font-mono text-sm text-kv-ink placeholder:text-kv-ink-muted/60 focus-visible:outline focus-visible:outline-3 focus-visible:outline-kv-blue"
+          className="w-full rounded-kv border border-kv-line bg-kv-surface p-3 font-mono text-sm text-kv-ink placeholder:text-kv-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-kv-ink"
           aria-label="Teks lirik"
         />
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           {text.trim() ? (
-            lrc ? <Badge tone="pink">● Akan tersinkron</Badge> : <Badge tone="surface">Teks biasa</Badge>
+            lrc ? <Badge tone="surface">Akan tersinkron</Badge> : <Badge tone="surface">Teks biasa</Badge>
           ) : (
             <span />
           )}

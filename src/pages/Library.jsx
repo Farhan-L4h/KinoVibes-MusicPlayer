@@ -73,6 +73,9 @@ const Library = () => {
   const [albumTracks, setAlbumTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [albumLoading, setAlbumLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [albumError, setAlbumError] = useState('');
+  const [albumRetry, setAlbumRetry] = useState(0);
   const [filter, setFilter] = useState('');
   const [trackSort, setTrackSort] = useState('newest');
   const [albumSort, setAlbumSort] = useState('newest');
@@ -81,6 +84,7 @@ const Library = () => {
   const load = async () => {
     if (!user) return;
     setLoading(true);
+    setError('');
     try {
       const [music, albumRows] = await Promise.all([
         getUserMusic(user.id),
@@ -89,7 +93,7 @@ const Library = () => {
       setTracks(music);
       setAlbums(buildAlbumList(albumRows, music));
     } catch {
-      toast.error('Gagal memuat library');
+      setError('Library belum bisa dimuat. Periksa koneksi lalu coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -106,13 +110,15 @@ const Library = () => {
     }
     let cancelled = false;
     setAlbumLoading(true);
+    setAlbumError('');
+    setAlbumTracks([]);
     getAlbumTracks(user.id, albumName)
       .then((rows) => {
         if (cancelled) return;
         setAlbumTracks(rows.map(transformMusicData).filter((t) => t && t.source !== 'youtube'));
       })
       .catch(() => {
-        if (!cancelled) toast.error('Gagal memuat album');
+        if (!cancelled) setAlbumError('Lagu dalam album belum bisa dimuat.');
       })
       .finally(() => {
         if (!cancelled) setAlbumLoading(false);
@@ -120,7 +126,7 @@ const Library = () => {
     return () => {
       cancelled = true;
     };
-  }, [albumName, user?.id]);
+  }, [albumName, user?.id, albumRetry]);
 
   const visibleTracks = useMemo(() => {
     const f = filter.trim().toLowerCase();
@@ -167,24 +173,24 @@ const Library = () => {
         <button
           type="button"
           onClick={closeAlbum}
-          className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-wider text-kv-ink-muted hover:text-kv-ink"
+          className="flex items-center gap-1.5 font-mono text-xs text-kv-ink-muted hover:text-kv-ink"
         >
           <ArrowLeft size={14} /> Semua album
         </button>
 
         <header className="kv-card flex flex-col gap-5 p-5 sm:flex-row sm:items-end sm:p-6">
-          <span className="kv-dots block h-36 w-36 shrink-0 overflow-hidden rounded-kv border-3 border-kv-ink bg-kv-purple shadow-kv-lg sm:h-44 sm:w-44">
+          <span className="block h-36 w-36 shrink-0 overflow-hidden rounded-kv border border-kv-line bg-kv-muted sm:h-44 sm:w-44">
             {currentAlbum?.coverArt ? (
-              <img src={currentAlbum.coverArt} alt="" className="h-full w-full object-cover" />
+              <img src={currentAlbum.coverArt} alt="" decoding="async" className="h-full w-full object-cover" />
             ) : (
               <span className="flex h-full w-full items-center justify-center">
-                <Disc3 size={56} className="text-[#0a0a0a]" />
+                <Disc3 size={56} className="text-kv-ink-muted" />
               </span>
             )}
           </span>
           <div className="min-w-0 flex-1">
-            <Badge tone="blue">Album</Badge>
-            <h1 className="mt-2 font-display text-3xl uppercase leading-tight sm:text-4xl">{albumName}</h1>
+            <Badge tone="surface">Album</Badge>
+            <h1 className="mt-2 break-words font-display text-xl leading-relaxed sm:text-2xl">{albumName}</h1>
             <p className="mt-1 font-semibold text-kv-ink-muted">{currentAlbum?.artist || 'Various Artists'}</p>
             <p className="mt-1 font-mono text-xs text-kv-ink-muted">
               {albumTracks.length} lagu · {formatTotalDuration(albumTracks.reduce((a, t) => a + (t.duration || 0), 0))}
@@ -194,7 +200,7 @@ const Library = () => {
               <Button size="sm" onClick={() => actions.playAll(albumTracks)} disabled={albumTracks.length === 0}>
                 <Play size={15} /> Putar semua
               </Button>
-              <Button size="sm" variant="pink" onClick={() => actions.shuffleAll(albumTracks)} disabled={albumTracks.length === 0}>
+              <Button size="sm" variant="secondary" onClick={() => actions.shuffleAll(albumTracks)} disabled={albumTracks.length === 0}>
                 <Shuffle size={15} /> Acak
               </Button>
             </div>
@@ -205,6 +211,8 @@ const Library = () => {
           <div className="space-y-2">
             {[...Array(4)].map((_, i) => <TrackRowSkeleton key={i} />)}
           </div>
+        ) : albumError ? (
+          <EmptyState icon={Disc3} title="Album belum tersedia" description={albumError} action={<Button size="sm" onClick={() => setAlbumRetry((n) => n + 1)}>Coba lagi</Button>} />
         ) : albumTracks.length === 0 ? (
           <EmptyState icon={Music2} title="Album kosong" description="Belum ada lagu upload dengan nama album ini." />
         ) : (
@@ -237,11 +245,11 @@ const Library = () => {
     <div className="mx-auto max-w-5xl space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl uppercase sm:text-4xl">Library kamu</h1>
-          <p className="mt-1 flex flex-wrap items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-kv-ink-muted">
-            <Badge tone="yellow">{tracks.length} lagu</Badge>
-            <Badge tone="blue">{albums.length} album</Badge>
-            <Badge tone="pink">{formatTotalDuration(totalDuration)}</Badge>
+          <h1 className="font-display text-xl leading-relaxed sm:text-2xl">Library kamu</h1>
+          <p className="mt-1 flex flex-wrap items-center gap-2 font-mono text-xs text-kv-ink-muted">
+            <Badge tone="surface">{tracks.length} lagu</Badge>
+            <Badge tone="surface">{albums.length} album</Badge>
+            <Badge tone="surface">{formatTotalDuration(totalDuration)}</Badge>
           </p>
         </div>
         <Button onClick={() => navigate('/upload')}>
@@ -269,7 +277,7 @@ const Library = () => {
                 onChange={(e) => setFilter(e.target.value)}
                 placeholder="Saring judul, artis, album…"
                 aria-label="Saring lagu"
-                className="min-h-[44px] w-full rounded-kv border-3 border-kv-ink bg-kv-surface py-2 pl-9 pr-3 text-sm font-semibold shadow-kv placeholder:text-kv-ink-muted/60"
+                className="min-h-[44px] w-full rounded-full border border-kv-line bg-kv-surface py-2 pl-9 pr-3 text-sm placeholder:text-kv-ink-muted"
               />
             </div>
             <Select
@@ -281,7 +289,7 @@ const Library = () => {
             <Button size="sm" onClick={() => actions.playAll(visibleTracks)} disabled={visibleTracks.length === 0}>
               <Play size={15} /> Putar
             </Button>
-            <Button size="sm" variant="pink" onClick={() => actions.shuffleAll(visibleTracks)} disabled={visibleTracks.length === 0}>
+            <Button size="sm" variant="secondary" onClick={() => actions.shuffleAll(visibleTracks)} disabled={visibleTracks.length === 0}>
               <Shuffle size={15} /> Acak
             </Button>
           </div>
@@ -290,6 +298,8 @@ const Library = () => {
             <div className="space-y-2">
               {[...Array(6)].map((_, i) => <TrackRowSkeleton key={i} />)}
             </div>
+          ) : error ? (
+            <EmptyState icon={LibraryIcon} title="Library belum tersedia" description={error} action={<Button size="sm" onClick={load}>Coba lagi</Button>} />
           ) : visibleTracks.length === 0 ? (
             <EmptyState
               icon={LibraryIcon}
@@ -312,7 +322,7 @@ const Library = () => {
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="font-mono text-xs font-bold uppercase tracking-wider text-kv-ink-muted">Urutkan:</span>
+            <span className="font-mono text-xs text-kv-ink-muted">Urutkan:</span>
             <Select
               label="Urutkan album"
               options={ALBUM_SORTS}
@@ -325,6 +335,8 @@ const Library = () => {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
               {[...Array(8)].map((_, i) => <CardSkeleton key={i} />)}
             </div>
+          ) : error ? (
+            <EmptyState icon={Disc3} title="Album belum tersedia" description={error} action={<Button size="sm" onClick={load}>Coba lagi</Button>} />
           ) : visibleAlbums.length === 0 ? (
             <EmptyState
               icon={Disc3}

@@ -51,7 +51,7 @@ const Profile = () => {
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
 
-  const [uploadCount, setUploadCount] = useState(0);
+  const [uploadCount, setUploadCount] = useState(null);
   const [name, setName] = useState('');
   const [savingName, setSavingName] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -69,7 +69,7 @@ const Profile = () => {
     if (!user) return;
     getUserMusic(user.id)
       .then((list) => setUploadCount(list.length))
-      .catch(() => {});
+      .catch(() => setUploadCount('Tidak tersedia'));
   }, [user?.id]);
 
   const handleSaveName = async (e) => {
@@ -131,45 +131,45 @@ const Profile = () => {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <header className="kv-card kv-stripes flex flex-wrap items-center gap-5 p-5 sm:p-6">
-        <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-kv border-3 border-kv-ink bg-kv-blue font-display text-2xl text-[#0a0a0a] shadow-kv-lg">
+      <header className="kv-card flex flex-wrap items-center gap-5 p-5 sm:p-6">
+        <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-kv-line bg-kv-muted font-display text-xl text-kv-ink">
           {initials(displayName)}
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-2xl uppercase sm:text-3xl">{displayName}</h1>
+          <h1 className="truncate font-display text-xl leading-relaxed sm:text-2xl">{displayName}</h1>
           <p className="truncate text-sm text-kv-ink-muted">{user?.email}</p>
           {joined && (
-            <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-kv-ink-muted">
+            <p className="mt-1 font-mono text-[11px] text-kv-ink-muted">
               Bergabung {joined}
             </p>
           )}
         </div>
-        <Button variant="danger" size="sm" onClick={handleLogout}>
+        <Button variant="secondary" size="sm" onClick={handleLogout}>
           <LogOut size={15} /> Keluar
         </Button>
       </header>
 
       <div className="grid grid-cols-3 gap-3">
         {[
-          { icon: Music2, label: 'Lagu upload', value: uploadCount, tone: 'bg-kv-yellow' },
-          { icon: Heart, label: 'Favorit', value: favCount, tone: 'bg-kv-pink' },
-          { icon: ListMusic, label: 'Playlist', value: playlistCount, tone: 'bg-kv-green' },
-        ].map(({ icon: Icon, label, value, tone }) => (
+          { icon: Music2, label: 'Lagu upload', value: uploadCount },
+          { icon: Heart, label: 'Favorit', value: favCount },
+          { icon: ListMusic, label: 'Playlist', value: playlistCount },
+        ].map(({ icon: Icon, label, value }) => (
           <div key={label} className="kv-card p-3 text-center sm:p-4">
-            <span className={`mx-auto flex h-10 w-10 items-center justify-center rounded-kv border-3 border-kv-ink ${tone} shadow-kv`}>
-              <Icon size={18} className="text-[#0a0a0a]" />
+            <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-kv-muted">
+              <Icon size={18} className="text-kv-ink" />
             </span>
-            <p className="mt-2 font-display text-2xl">{value}</p>
-            <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-kv-ink-muted">{label}</p>
+            <p className={`mt-2 ${typeof value === 'number' ? 'font-display text-2xl' : 'text-xs text-kv-ink-muted'}`}>{value ?? 'Memuat…'}</p>
+            <p className="text-xs text-kv-ink-muted">{label}</p>
           </div>
         ))}
       </div>
 
       <section className="kv-card p-4 sm:p-5">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-lg uppercase">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-sm leading-relaxed">
           <User size={18} /> Nama tampilan
         </h2>
-        <form onSubmit={handleSaveName} className="flex items-end gap-2">
+        <form onSubmit={handleSaveName} className="flex flex-wrap items-end gap-2">
           <Input label="Nama" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
           <Button type="submit" size="md" disabled={savingName || !name.trim()} className="shrink-0">
             {savingName ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
@@ -179,7 +179,7 @@ const Profile = () => {
       </section>
 
       <section className="kv-card p-4 sm:p-5">
-        <h2 className="mb-3 font-display text-lg uppercase">Tema</h2>
+        <h2 className="mb-3 font-display text-sm leading-relaxed">Tema</h2>
         <div className="grid grid-cols-3 gap-2">
           {THEMES.map(({ value, label, icon: Icon }) => (
             <button
@@ -188,8 +188,8 @@ const Profile = () => {
               onClick={() => setTheme(value)}
               aria-pressed={theme === value}
               className={cn(
-                'kv-press flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-kv border-3 border-kv-ink px-2 py-2 font-bold shadow-kv',
-                theme === value ? 'bg-kv-yellow text-[#0a0a0a]' : 'bg-kv-surface text-kv-ink'
+                'flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-kv border px-2 py-2 font-semibold transition-colors',
+                theme === value ? 'border-kv-ink bg-kv-ink text-kv-panel' : 'border-kv-line bg-kv-surface text-kv-ink hover:bg-kv-muted'
               )}
             >
               <Icon size={18} />
@@ -200,7 +200,7 @@ const Profile = () => {
       </section>
 
       <section className="kv-card p-4 sm:p-5">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-lg uppercase">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-sm leading-relaxed">
           <KeyRound size={18} /> Ganti kata sandi
         </h2>
         <form onSubmit={handlePassword} className="space-y-3">
@@ -230,7 +230,7 @@ const Profile = () => {
       </section>
 
       <section className="kv-card p-4 sm:p-5">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-lg uppercase">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-sm leading-relaxed">
           <Keyboard size={18} /> Pintasan keyboard
         </h2>
         <ul className="space-y-2">

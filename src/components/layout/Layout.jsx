@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuthStore } from '../../stores/auth';
 import { useMusicStore } from '../../stores/music';
@@ -9,7 +9,7 @@ import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import MobileNav from './MobileNav';
 import MiniPlayer from '../player/MiniPlayer';
-import NowPlaying from '../player/NowPlaying';
+const NowPlaying = lazy(() => import('../player/NowPlaying'));
 import VideoDock from '../player/VideoDock';
 import AddToPlaylistModal from '../AddToPlaylistModal';
 import PageTransition from '../PageTransition';
@@ -17,7 +17,7 @@ import Toaster from '../ui/Toaster';
 
 const Layout = () => {
   const user = useAuthStore((s) => s.user);
-  const hasTrack = useMusicStore((s) => !!s.currentTrack);
+  const nowPlayingOpen = useMusicStore((s) => s.nowPlayingOpen);
   useKeyboardShortcuts();
 
   useEffect(() => {
@@ -31,26 +31,21 @@ const Layout = () => {
   }, [user?.id]);
 
   return (
-    <div className="min-h-screen bg-kv-bg font-body text-kv-ink">
-      <Sidebar />
-      <div className="flex min-h-screen flex-col lg:pl-kv-sidebar">
+    <div className="kv-canvas fixed inset-0 flex p-0 sm:p-4 lg:p-6">
+      <div className="kv-panel relative flex min-h-0 w-full flex-col overflow-hidden sm:rounded-kv-panel" inert={nowPlayingOpen}>
         <TopBar />
-        <main
-          className="flex-1 px-4 pt-5 sm:px-6 lg:px-8"
-          style={{
-            paddingBottom: hasTrack
-              ? 'calc(var(--kv-miniplayer-h) + var(--kv-bottomnav-h) + 24px)'
-              : 'calc(var(--kv-bottomnav-h) + 24px)',
-          }}
-        >
-          <PageTransition>
-            <Outlet />
-          </PageTransition>
-        </main>
+        <div className="flex min-h-0 flex-1">
+          <Sidebar />
+          <main className="kv-scroll min-w-0 flex-1 overflow-y-auto px-4 pb-10 pt-2 sm:px-7 sm:pt-4">
+            <PageTransition>
+              <Suspense fallback={<p role="status" className="py-12 text-center">Memuat halaman…</p>}><Outlet /></Suspense>
+            </PageTransition>
+          </main>
+        </div>
+        <MiniPlayer />
+        <MobileNav />
       </div>
-      <MiniPlayer />
-      <MobileNav />
-      <NowPlaying />
+      {nowPlayingOpen && <Suspense fallback={<div role="status" className="fixed inset-x-4 bottom-24 z-50 rounded-kv bg-kv-surface p-4">Memuat pemutar…</div>}><NowPlaying /></Suspense>}
       <VideoDock />
       <AddToPlaylistModal />
       <Toaster />

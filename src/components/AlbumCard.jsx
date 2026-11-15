@@ -1,47 +1,24 @@
 import { Disc3, Play } from 'lucide-react';
 
-const ACCENTS = ['var(--kv-pink)', 'var(--kv-blue)', 'var(--kv-green)', 'var(--kv-orange)', 'var(--kv-purple)'];
-
-const AlbumCard = ({ album, index = 0, onClick, onPlay }) => (
-  <div className="group relative">
-    <button
-      type="button"
-      onClick={onClick}
-      className="kv-press block w-full rounded-kv border-3 border-kv-ink bg-kv-surface text-left shadow-kv"
-      aria-label={`Buka album ${album.name}`}
-    >
-      <span
-        className="relative block aspect-square w-full overflow-hidden border-b-3 border-kv-ink"
-        style={{ background: ACCENTS[index % ACCENTS.length] }}
-      >
+const AlbumCard = ({ album, onClick, onPlay }) => (
+  <div className="group relative min-w-0">
+    <button type="button" onClick={onClick} className="block w-full overflow-hidden rounded-kv border border-kv-line bg-kv-surface text-left transition-colors hover:border-kv-ink" aria-label={`Buka album ${album.name}`}>
+      <span className="relative block aspect-square w-full overflow-hidden bg-kv-muted">
         {album.coverArt ? (
-          <img src={album.coverArt} alt="" loading="lazy" className="h-full w-full object-cover" />
+          <img src={album.coverArt} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover grayscale transition-[filter] group-hover:grayscale-0 group-focus-within:grayscale-0" />
         ) : (
-          <span className="kv-dots flex h-full w-full items-center justify-center">
-            <Disc3 size={56} className="text-[#0a0a0a] transition-transform duration-300 group-hover:rotate-45" />
-          </span>
+          <span className="flex h-full w-full items-center justify-center text-kv-ink-muted"><Disc3 size={52} /></span>
         )}
       </span>
       <span className="block p-3">
-        <span className="block truncate font-display text-sm uppercase leading-tight">{album.name}</span>
-        <span className="mt-0.5 block truncate text-xs text-kv-ink-muted">{album.artist || 'Various Artists'}</span>
-        <span className="mt-1.5 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-wider text-kv-ink-muted">
-          {album.trackCount} lagu{album.year ? ` · ${album.year}` : ''}
-        </span>
+        <span className="block truncate text-sm font-semibold leading-tight">{album.name}</span>
+        <span className="mt-1 block truncate text-xs text-kv-ink-muted">{album.artist || 'Various Artists'}</span>
+        <span className="mt-2 block font-mono text-[10px] text-kv-ink-muted">{album.trackCount} lagu{album.year ? ` · ${album.year}` : ''}</span>
       </span>
     </button>
     {onPlay && (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onPlay();
-        }}
-        aria-label={`Putar album ${album.name}`}
-        title="Putar album"
-        className="kv-press absolute right-2 top-2 flex h-10 w-10 items-center justify-center rounded-kv border-3 border-kv-ink bg-kv-yellow opacity-100 shadow-kv transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100"
-      >
-        <Play size={16} className="ml-0.5 text-[#0a0a0a]" />
+      <button type="button" onClick={(e) => { e.stopPropagation(); onPlay(); }} aria-label={`Putar album ${album.name}`} title="Putar album" className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full border border-kv-line bg-kv-panel text-kv-ink shadow-sm hover:bg-kv-ink hover:text-kv-panel">
+        <Play size={16} className="ml-0.5" />
       </button>
     )}
   </div>

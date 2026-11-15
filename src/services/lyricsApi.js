@@ -5,6 +5,30 @@ import { cleanTitle } from '../lib/utils';
 import { ensureYouTubeTrack } from './supabaseMusicApi';
 
 const lyricsCache = new Map();
+const pendingLyrics = new Map();
+const MAX_LYRICS = 100;
+const CACHE_TTL = 15 * 60_000;
+let authSubject;
+
+supabase.auth.onAuthStateChange((event, session) => {
+  const subject = session?.user?.id || null;
+  if (event === 'SIGNED_OUT' || subject !== authSubject) {
+    authSubject = subject;
+    lyricsCache.clear();
+    for (const entry of pendingLyrics.values()) entry.controller.abort();
+    pendingLyrics.clear();
+  }
+});
+
+const abortable = (promise, signal) => new Promise((resolve, reject) => {
+  const abort = () => reject(signal.reason || new DOMException('Aborted', 'AbortError'));
+  if (signal.aborted) {
+    abort();
+    return;
+  }
+  signal.addEventListener('abort', abort, { once: true });
+  promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+});
 
 const offsetKey = (trackId) => `kv-lyrics-offset:${trackId}`;
 
@@ -17,21 +41,17 @@ export const setLyricsOffset = (trackId, ms) => {
   localStorage.setItem(offsetKey(trackId), String(ms));
 };
 
-const fetchUserLyrics = async (track) => {
-  let url = null;
-  if (track.lyricsPath) {
-    try {
-      url = await getSignedUrl(BUCKETS.LYRICS, track.lyricsPath);
-    } catch {
-      url = track.lyricsUrl || null;
-    }
-  } else if (track.lyricsUrl) {
-    url = track.lyricsUrl;
+const fetchUserLyrics = async (track, signal) => {
+  const url = track.lyricsPath
+    ? await abortable(getSignedUrl(BUCKETS.LYRICS, track.lyricsPath), signal)
+    : track.lyricsUrl;
+  if (!url) {
+    if (track.lyricsPath) throw new Error('URL lirik tidak tersedia');
+    return null;
   }
-  if (!url) return null;
-
-  const res = await fetch(url);
-  if (!res.ok) return null;
+  if (signal.aborted) throw signal.reason;
+  const res = await fetch(url, { signal, cache: 'no-store' });
+  if (!res.ok) throw new Error(`Gagal memuat lirik (${res.status})`);
   const text = await res.text();
   if (!text.trim()) return null;
 
@@ -42,15 +62,16 @@ const fetchUserLyrics = async (track) => {
   return { synced: null, plain: text, source: 'user', baseOffsetMs: 0 };
 };
 
-const fetchLrclib = async (track) => {
+const fetchLrclib = async (track, signal) => {
   const params = new URLSearchParams({
     title: cleanTitle(track.title),
     artist: track.artist || '',
     album: track.album || '',
     duration: String(track.duration || 0),
   });
-  const res = await fetch(`/api/lyrics?${params}`);
-  if (!res.ok) return null;
+  const res = await fetch(`/api/lyrics?${params}`, { signal });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Gagal mencari lirik (${res.status})`);
   const body = await res.json();
   if (!body.syncedLyrics && !body.plainLyrics) return null;
   return {
@@ -63,29 +84,66 @@ const fetchLrclib = async (track) => {
   };
 };
 
-export const fetchLyrics = async (track, { force = false } = {}) => {
+export const fetchLyrics = async (track, { force = false, signal } = {}) => {
   if (!track) return null;
-  if (!force && lyricsCache.has(track.id)) return lyricsCache.get(track.id);
-
-  let result = null;
-  try {
-    result = await fetchUserLyrics(track);
-  } catch {
-    result = null;
+  if (signal?.aborted) throw signal.reason;
+  if (force) invalidateLyricsCache(track.id);
+  const key = JSON.stringify([track.id, track.userId, track.lyricsPath, track.lyricsUrl,
+    track.title, track.artist, track.album, track.duration, track.updatedAt]);
+  for (const [id, entry] of lyricsCache) {
+    if (entry.expiresAt <= Date.now()) lyricsCache.delete(id);
   }
-  if (!result) {
-    try {
-      result = await fetchLrclib(track);
-    } catch {
-      result = null;
+  const hit = lyricsCache.get(key);
+  if (hit) {
+    lyricsCache.delete(key);
+    lyricsCache.set(key, hit);
+    return hit.result;
+  }
+
+  let entry = pendingLyrics.get(key);
+  if (!entry) {
+    const controller = new AbortController();
+    entry = { trackId: track.id, controller };
+    const timeout = setTimeout(() => controller.abort(new DOMException('Lyrics timeout', 'TimeoutError')), 12_000);
+    const request = async () => {
+      const userLyrics = await fetchUserLyrics(track, controller.signal);
+      if (controller.signal.aborted) throw controller.signal.reason;
+      return userLyrics || fetchLrclib(track, controller.signal);
+    };
+    entry.promise = abortable(request(), controller.signal).then((result) => {
+      if (controller.signal.aborted || pendingLyrics.get(key) !== entry) {
+        throw controller.signal.reason || new DOMException('Lyrics invalidated', 'AbortError');
+      }
+      if (result) {
+        lyricsCache.set(key, { trackId: track.id, result, expiresAt: Date.now() + CACHE_TTL });
+        while (lyricsCache.size > MAX_LYRICS) lyricsCache.delete(lyricsCache.keys().next().value);
+      }
+      return result;
+    }).finally(() => {
+      clearTimeout(timeout);
+      if (pendingLyrics.get(key) === entry) pendingLyrics.delete(key);
+    });
+    pendingLyrics.set(key, entry);
+    while (pendingLyrics.size > MAX_LYRICS) {
+      const oldest = pendingLyrics.keys().next().value;
+      pendingLyrics.get(oldest).controller.abort();
+      pendingLyrics.delete(oldest);
     }
   }
-  lyricsCache.set(track.id, result);
-  return result;
+  // A caller can stop waiting without cancelling another view's shared request.
+  return signal ? abortable(entry.promise, signal) : entry.promise;
 };
 
 export const invalidateLyricsCache = (trackId) => {
-  lyricsCache.delete(trackId);
+  for (const [key, entry] of lyricsCache) {
+    if (entry.trackId === trackId) lyricsCache.delete(key);
+  }
+  for (const [key, entry] of pendingLyrics) {
+    if (entry.trackId === trackId) {
+      entry.controller.abort();
+      pendingLyrics.delete(key);
+    }
+  }
 };
 
 export const saveManualLyrics = async (track, text, userId) => {
