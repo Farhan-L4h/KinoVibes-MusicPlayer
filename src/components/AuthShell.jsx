@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Music2, Mic2, Youtube, Upload, Heart } from 'lucide-react';
 import Toaster from './ui/Toaster';
+import GlobalAmbient from './GlobalAmbient';
 
 const FEATURES = [
   { icon: Youtube, text: 'Streaming dari YouTube Music' },
@@ -10,8 +11,9 @@ const FEATURES = [
 ];
 
 const AuthShell = ({ children }) => (
-  <div className="min-h-screen bg-kv-bg p-3 font-body text-kv-ink sm:p-6">
-    <div className="mx-auto grid min-h-[calc(100dvh-3rem)] max-w-6xl overflow-hidden rounded-kv-lg bg-kv-panel lg:grid-cols-2">
+  <div className="relative min-h-screen bg-kv-bg p-3 font-body text-kv-ink sm:p-6">
+    <GlobalAmbient />
+    <div className="relative mx-auto grid min-h-[calc(100dvh-3rem)] max-w-6xl overflow-hidden rounded-kv-lg bg-kv-panel lg:grid-cols-2">
       <div className="hidden flex-col justify-between border-r border-kv-line p-10 lg:flex">
         <Link to="/" className="flex min-h-11 items-center gap-3 self-start" aria-label="KinoVibe, beranda">
           <Music2 size={26} aria-hidden="true" />

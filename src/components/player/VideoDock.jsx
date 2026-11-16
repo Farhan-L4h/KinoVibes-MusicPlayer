@@ -44,10 +44,37 @@ const VideoDock = () => {
         observedRef.current = slot;
       }
       const r = slot.getBoundingClientRect();
-      host.style.top = `${r.top}px`;
-      host.style.left = `${r.left}px`;
-      host.style.width = `${r.width}px`;
-      host.style.height = `${r.height}px`;
+      // Clip the host window to the scroll region that owns the slot so the
+      // video can never paint over the TopBar / MiniPlayer when the slot
+      // scrolls out of view. The iframe itself keeps its full cover-crop size.
+      const clipEl = useMusicStore.getState().nowPlayingOpen
+        ? document.querySelector('[data-kv-np-left]')
+        : document.querySelector('[data-kv-main]');
+      let left = r.left;
+      let top = r.top;
+      let width = r.width;
+      let height = r.height;
+      if (clipEl) {
+        const cr = clipEl.getBoundingClientRect();
+        const x0 = Math.max(r.left, cr.left);
+        const y0 = Math.max(r.top, cr.top);
+        const x1 = Math.min(r.right, cr.right);
+        const y1 = Math.min(r.bottom, cr.bottom);
+        if (x1 - x0 < 8 || y1 - y0 < 8) {
+          host.style.display = 'none';
+          setHasSlot(true);
+          return;
+        }
+        left = x0;
+        top = y0;
+        width = x1 - x0;
+        height = y1 - y0;
+      }
+      host.style.display = 'block';
+      host.style.top = `${top}px`;
+      host.style.left = `${left}px`;
+      host.style.width = `${width}px`;
+      host.style.height = `${height}px`;
       host.style.borderRadius = getComputedStyle(slot).borderRadius;
       host.style.zIndex = useMusicStore.getState().nowPlayingOpen ? '60' : '30';
       // Cover-crop the 16:9 frame into the (often square) slot so no black
@@ -58,8 +85,8 @@ const VideoDock = () => {
         const fw = (fh * 16) / 9;
         frame.style.width = `${fw}px`;
         frame.style.height = `${fh}px`;
-        frame.style.left = `${(r.width - fw) / 2}px`;
-        frame.style.top = `${(r.height - fh) / 2}px`;
+        frame.style.left = `${r.left - left + (r.width - fw) / 2}px`;
+        frame.style.top = `${r.top - top + (r.height - fh) / 2}px`;
       }
       setHasSlot(true);
     };

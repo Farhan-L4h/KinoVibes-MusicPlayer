@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 
 const cache = new Map();
+const CACHE_LIMIT = 64;
+let sharedCanvas = null;
+
+const remember = (url, colors) => {
+  if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value);
+  cache.set(url, colors);
+};
 
 const clamp = (v) => Math.round(Math.max(16, Math.min(230, v * 0.55 + 12)));
 const toHex = (rgb) => `#${rgb.map((v) => clamp(v).toString(16).padStart(2, '0')).join('')}`;
@@ -22,10 +29,12 @@ export const useArtColors = (url) => {
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 12;
-        canvas.height = 12;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!sharedCanvas) {
+          sharedCanvas = document.createElement('canvas');
+          sharedCanvas.width = 12;
+          sharedCanvas.height = 12;
+        }
+        const ctx = sharedCanvas.getContext('2d', { willReadFrequently: true });
         ctx.drawImage(img, 0, 0, 12, 12);
         const d = ctx.getImageData(0, 0, 12, 12).data;
         const avg = (x0, y0, x1, y1) => {
@@ -49,7 +58,7 @@ export const useArtColors = (url) => {
           b: toHex(avg(6, 6, 12, 12)),
           c: toHex(avg(6, 0, 12, 6)),
         };
-        cache.set(url, result);
+        remember(url, result);
         if (alive) setColors(result);
       } catch {
         // tainted canvas (no CORS): stay monochrome
@@ -58,6 +67,8 @@ export const useArtColors = (url) => {
     img.src = url;
     return () => {
       alive = false;
+      img.onload = null;
+      img.src = '';
     };
   }, [url]);
 

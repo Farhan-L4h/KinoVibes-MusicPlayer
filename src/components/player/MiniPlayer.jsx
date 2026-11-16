@@ -20,9 +20,9 @@ export default function MiniPlayer() {
       <div className="pointer-events-none absolute inset-0 z-0 opacity-50"><Visualizer /></div>
       <div className="relative z-10">
         <SeekSlider />
-        <div className="flex min-h-[60px] items-center gap-2 pb-1.5 sm:gap-4">
-          <button type="button" onClick={() => setNowPlayingOpen(true)} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-label="Buka tampilan sedang diputar">
-            <span key={track.id} className="kv-fade relative isolate hidden h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-kv-muted sm:block">
+        <div className="flex min-h-[56px] items-center gap-2 pb-1.5 sm:min-h-[60px] sm:gap-4">
+          <button type="button" onClick={() => setNowPlayingOpen(true)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left sm:gap-3" aria-label="Buka tampilan sedang diputar">
+            <span key={track.id} className="kv-fade relative isolate h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-kv-muted sm:h-11 sm:w-11">
               <Ambient url={track.albumArt} opacity={0.55} />
               <TrackArt src={track.albumArt} videoId={track.videoId} small imgClassName="relative z-10 h-full w-full object-cover" placeholderClassName="relative z-10 flex h-full w-full items-center justify-center text-kv-ink-muted" placeholderSize={20} />
             </span>

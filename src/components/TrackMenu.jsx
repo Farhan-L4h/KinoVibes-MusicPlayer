@@ -73,7 +73,8 @@ const TrackMenu = ({ track, onDelete }) => {
   };
 
   const fav = isFavorite(track);
-  const isUpload = track.source !== 'youtube';
+  const isUpload = track.source !== 'youtube' && track.source !== 'spotify';
+  const canRemove = track.source !== 'youtube';
 
   const Item = ({ icon: Icon, label, onClick, danger }) => (
     <button
@@ -126,7 +127,7 @@ const TrackMenu = ({ track, onDelete }) => {
             {isUpload && (
               <Item icon={Download} label="Unduh lagu" onClick={run(() => actions.download(track))} />
             )}
-            {isUpload && onDelete && (
+            {canRemove && onDelete && (
               <Item icon={Trash2} label="Hapus dari library" onClick={run(onDelete)} danger />
             )}
           </div>,

@@ -33,7 +33,7 @@ const TrackRow = ({
   return (
     <div
       className={cn(
-        'group flex flex-wrap items-center gap-2 rounded-kv border p-2 transition-colors duration-150 sm:flex-nowrap sm:gap-3',
+        'group flex flex-nowrap items-center gap-2 rounded-kv border p-1.5 transition-colors duration-150 sm:gap-3 sm:p-2',
         active
           ? 'border-kv-line bg-kv-surface'
           : 'border-transparent hover:border-kv-line hover:bg-kv-surface'
@@ -43,7 +43,7 @@ const TrackRow = ({
         type="button"
         onClick={() => actions.play(track, list)}
         aria-label={`Putar ${track.title}`}
-        className="flex h-11 w-8 shrink-0 items-center justify-center font-mono text-sm font-bold text-kv-ink-muted"
+        className="hidden h-11 w-8 shrink-0 items-center justify-center font-mono text-sm font-bold text-kv-ink-muted sm:flex"
       >
         {active ? (
           <EqBars playing={isPlaying} />
@@ -58,9 +58,9 @@ const TrackRow = ({
       <button
         type="button"
         onClick={() => actions.play(track, list)}
-        className="flex min-w-0 flex-[2] items-center gap-3 text-left"
+        className="flex min-w-0 flex-[2] items-center gap-2.5 text-left sm:gap-3"
       >
-        <span className="block h-12 w-12 shrink-0 overflow-hidden rounded-kv border border-kv-line bg-kv-muted">
+        <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-kv border border-kv-line bg-kv-muted sm:h-12 sm:w-12">
           <TrackArt src={track.albumArt} videoId={track.videoId} small placeholderSize={18} />
         </span>
         <span className="min-w-0">
@@ -71,6 +71,11 @@ const TrackRow = ({
             {track.source === 'youtube' && (
               <span className="shrink-0 rounded border border-kv-line bg-kv-panel px-1 font-mono text-[9px] text-kv-ink">
                 YT
+              </span>
+            )}
+            {track.source === 'spotify' && (
+              <span className="shrink-0 rounded border border-kv-line bg-kv-panel px-1 font-mono text-[9px] text-kv-ink">
+                SP
               </span>
             )}
           </span>

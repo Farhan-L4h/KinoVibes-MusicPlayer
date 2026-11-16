@@ -16,6 +16,7 @@ const TrackCard = ({ track, onPlay, width = 'w-40 sm:w-44' }) => {
           {active && isPlaying ? <EqBars /> : <Play size={15} className="ml-0.5" />}
         </span>
         {track.source === 'youtube' && <span className="absolute left-2 top-2 rounded bg-kv-panel px-1.5 py-0.5 font-mono text-[9px] text-kv-ink">YT</span>}
+        {track.source === 'spotify' && <span className="absolute left-2 top-2 rounded bg-kv-panel px-1.5 py-0.5 font-mono text-[9px] text-kv-ink">SP</span>}
       </span>
       <span className="block p-3">
         <span className="block truncate text-sm font-semibold leading-tight">{track.title}</span>

@@ -8,6 +8,7 @@ Aplikasi publik: https://kino-vibes-music-player.vercel.app
 
 - Unggah musik sendiri, kelola library, playlist, dan favorit. Unduhan hanya untuk file unggahan dari Storage yang dapat diakses pengguna.
 - Pencarian YouTube memakai proxy `api/yt-search.js` dan `api/yt-suggest.js` melalui `youtubei.js`. Pemutaran memakai iframe resmi YouTube yang tetap terlihat, bukan ekstraksi audio. Tidak ada unduhan/offline YouTube atau sinkronisasi akun YouTube Music.
+- Spotify (opsional): login OAuth PKCE tanpa client secret, pencarian katalog, impor lagu tersimpan + playlist ke library, dan pemutaran lewat Web Playback SDK resmi. Lagu penuh tanpa iklan membutuhkan akun Spotify Premium pendengar; akun gratis fallback ke preview 30 detik bila tersedia. Tidak ada unduhan audio Spotify.
 - Lirik berasal dari unggahan pengguna atau LRCLIB melalui `api/lyrics.js`. LRC bertimestamp mendukung sinkronisasi; teks biasa tidak memiliki timing. Ketersediaan dan kecocokan lirik bergantung pada sumbernya.
 - Audio unggahan memakai streaming native browser melalui Howler HTML5. Retry playback dibatasi; cache pencarian, lirik, dan signed URL memiliki batas ukuran serta masa berlaku. Ini bukan cache audio offline dan tidak menjamin playback tanpa bandwidth yang cukup.
 - Aplikasi tidak melakukan transcoding. Dukungan codec bergantung pada browser; file berbitrate tinggi membutuhkan lebih banyak bandwidth. YouTube dapat membatasi embedding, wilayah, atau autoplay.
@@ -19,7 +20,11 @@ Gunakan Node.js 22.12+ dan npm, serta proyek Supabase. Di root repository, isi `
 ```dotenv
 VITE_SUPABASE_URL=<URL proyek Supabase>
 VITE_SUPABASE_ANON_KEY=<anon/public key proyek Supabase>
+# Opsional, untuk integrasi Spotify:
+VITE_SPOTIFY_CLIENT_ID=<client id aplikasi Spotify>
 ```
+
+Untuk Spotify: buat aplikasi di developer.spotify.com/dashboard, lalu daftarkan Redirect URI `<origin>/profile` untuk setiap origin yang dipakai (mis. `http://localhost:5173/profile` dan `https://kinovibe.han06.web.id/profile`). Tanpa variabel ini, kartu Spotify di Profil menampilkan status setup.
 
 Variabel `VITE_*` masuk ke bundle browser. Jangan gunakan service-role key, password database, atau OAuth client secret; jangan commit `.env`.
 

@@ -12,6 +12,7 @@ import LyricsView from '../LyricsView';
 import QueueList from './QueueList';
 import Transport from './Transport';
 import Visualizer from './Visualizer';
+import VerticalSpectrum from './VerticalSpectrum';
 
 export default function NowPlaying() {
   const open = useMusicStore((s) => s.nowPlayingOpen);
@@ -52,35 +53,44 @@ export default function NowPlaying() {
   if (!open || !track) return null;
   const fav = isFavorite(track);
   return (
-    <div ref={dialog} role="dialog" aria-modal="true" aria-label="Sedang diputar" tabIndex={-1} className="kv-pop fixed inset-0 z-50 overflow-y-auto bg-kv-panel text-kv-ink">
+    <div ref={dialog} data-kv-nowplaying role="dialog" aria-modal="true" aria-label="Sedang diputar" tabIndex={-1} className="kv-pop fixed inset-0 z-50 flex flex-col overflow-y-auto bg-kv-panel text-kv-ink lg:overflow-hidden">
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
-        <Ambient url={track.albumArt} opacity={0.55} />
+        <Ambient url={track.albumArt} opacity={0.7} />
       </div>
-      <div className="relative z-10 mx-auto max-w-6xl p-4 sm:p-8">
-        <header className="mb-6 flex items-center justify-between">
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl min-h-0 flex-1 flex-col p-3 sm:p-6 lg:p-8">
+        <header className="mb-3 flex shrink-0 items-center justify-between lg:mb-6">
           <IconButton label="Tutup tampilan sedang diputar" onClick={() => setNowPlayingOpen(false)}><ChevronDown size={22} /></IconButton>
-          <p className="font-mono text-xs">{isYt ? 'YouTube' : 'Koleksi pribadi'}</p>
+          <p className="font-mono text-xs">{isYt ? 'YouTube' : track.source === 'spotify' ? 'Spotify' : 'Koleksi pribadi'}</p>
           <IconButton label={fav ? 'Hapus dari favorit' : 'Tambah ke favorit'} onClick={() => actions.toggleLike(track)}><Heart size={19} fill={fav ? 'currentColor' : 'none'} /></IconButton>
         </header>
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-14">
-          <div className="space-y-5">
-            <div ref={slot} key={track.id} className="kv-fade relative mx-auto aspect-square w-full max-w-[420px] overflow-hidden rounded-kv-lg bg-kv-muted shadow-kv-lg">
-              {!isYt && <TrackArt src={track.albumArt} videoId={track.videoId} alt={`Sampul ${track.title}`} placeholderClassName="absolute inset-0 flex items-center justify-center text-kv-ink-muted" placeholderSize={80} />}
+        <div className="grid min-h-0 flex-1 items-start gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-12 lg:overflow-hidden">
+          <div data-kv-np-left className="kv-scroll space-y-3 sm:space-y-4 lg:h-full lg:min-h-0 lg:space-y-5 lg:overflow-y-auto lg:pr-1">
+            <div className="mx-auto flex w-full max-w-[300px] items-stretch gap-3 sm:max-w-[460px]">
+              <div className="hidden w-9 shrink-0 lg:block" aria-hidden="true">
+                <VerticalSpectrum />
+              </div>
+              <div ref={slot} key={`art-${track.id}`} className="kv-fade relative aspect-square min-w-0 flex-1 overflow-hidden rounded-kv-lg bg-kv-muted shadow-kv-lg">
+                {!isYt && <TrackArt src={track.albumArt} videoId={track.videoId} alt={`Sampul ${track.title}`} placeholderClassName="absolute inset-0 flex items-center justify-center text-kv-ink-muted" placeholderSize={80} />}
+              </div>
             </div>
-            <div className="h-20 sm:h-24"><Visualizer /></div>
-            <div key={track.id} className="kv-fade space-y-5">
-              <h1 className="break-words font-body text-2xl font-bold leading-tight">{track.title}</h1>
-              <p className="text-kv-ink-muted">{track.artist}</p>
+            <div className="h-12 sm:h-24"><Visualizer /></div>
+            <div key={`meta-${track.id}`} className="kv-fade space-y-2 sm:space-y-3 lg:space-y-5">
+              <h1 className="break-words font-body text-lg font-bold leading-tight sm:text-2xl">{track.title}</h1>
+              <p className="text-sm text-kv-ink-muted sm:text-base">{track.artist}</p>
             </div>
             <Transport waveform />
             <div className="flex justify-center gap-2">
               <IconButton label="Tambah ke playlist" onClick={() => actions.openAddToPlaylist(track)}><ListPlus size={20} /></IconButton>
-              {!isYt && <IconButton label="Unduh lagu" onClick={() => actions.download(track)}><Download size={20} /></IconButton>}
+              {!isYt && track.source !== 'spotify' && <IconButton label="Unduh lagu" onClick={() => actions.download(track)}><Download size={20} /></IconButton>}
             </div>
           </div>
-          <div className="min-w-0 space-y-4">
-            <Tabs tabs={[{ value: 'lyrics', label: 'Lirik' }, { value: 'queue', label: 'Up Next' }]} active={tab} onChange={setNowPlayingTab} />
-            <div className="min-h-[420px]">{tab === 'lyrics' ? <LyricsView compact /> : <QueueList />}</div>
+          <div className="flex min-w-0 flex-col gap-4 lg:h-full lg:min-h-0">
+            <div className="shrink-0">
+              <Tabs tabs={[{ value: 'lyrics', label: 'Lirik' }, { value: 'queue', label: 'Up Next' }]} active={tab} onChange={setNowPlayingTab} />
+            </div>
+            <div className="kv-scroll min-h-0 flex-1 lg:overflow-y-auto lg:pr-1">
+              {tab === 'lyrics' ? <LyricsView compact /> : <QueueList />}
+            </div>
           </div>
         </div>
       </div>

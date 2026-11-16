@@ -9,6 +9,7 @@ import { useModalStore } from '../stores/modals';
 import { usePlaylistStore } from '../stores/playlist';
 import { useAuthStore } from '../stores/auth';
 import { ensureYouTubeTrack } from '../services/supabaseMusicApi';
+import { ensureSpotifyTrack } from '../services/spotifyApi';
 import { toast } from '../stores/toast';
 
 const AddToPlaylistModal = () => {
@@ -36,6 +37,9 @@ const AddToPlaylistModal = () => {
       let musicId = track.id;
       if (track.source === 'youtube' && String(track.id).startsWith('yt:')) {
         const row = await ensureYouTubeTrack(track, user.id);
+        musicId = row.id;
+      } else if (track.source === 'spotify' && String(track.id).startsWith('sp:')) {
+        const row = await ensureSpotifyTrack(track, user.id);
         musicId = row.id;
       }
       await addSongToPlaylist(playlist.id, musicId);

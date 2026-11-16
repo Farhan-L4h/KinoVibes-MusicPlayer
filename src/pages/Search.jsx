@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search as SearchIcon, Youtube, Library, Loader2, X, Clock3, Music2, Disc3, UserRound, ListPlus } from 'lucide-react';
+import { Search as SearchIcon, Youtube, Library, Loader2, X, Clock3, Music2, Disc3, UserRound, ListPlus, AudioLines } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
 import { searchYouTube, suggestYouTube, ytItemToTrack } from '../services/ytApi';
+import { searchSpotify, isSpotifyConnected } from '../services/spotifyApi';
 import { searchMusic } from '../services/supabaseMusicApi';
 import TrackRow from '../components/TrackRow';
 import TrackArt from '../components/TrackArt';
@@ -82,7 +83,7 @@ const Search = () => {
   const initialQ = params.get('q') || '';
   const [input, setInput] = useState(initialQ);
   const [query, setQuery] = useState(initialQ);
-  const [src, setSrc] = useState(params.get('src') === 'library' ? 'library' : 'yt');
+  const [src, setSrc] = useState(['library', 'spotify'].includes(params.get('src')) ? params.get('src') : 'yt');
   const [type, setType] = useState(TYPE_TABS.some((t) => t.value === params.get('type')) ? params.get('type') : 'song');
   const [items, setItems] = useState([]);
   const [state, setState] = useState(initialQ ? 'loading' : 'idle');
@@ -131,6 +132,11 @@ const Search = () => {
           if (cancelled) return;
           setItems(rows);
           setState(rows.length ? 'ready' : 'empty');
+        } else if (src === 'spotify') {
+          const rows = await searchSpotify(trimmed, 24);
+          if (cancelled) return;
+          setItems(rows);
+          setState(rows.length ? 'ready' : 'empty');
         } else {
           const raw = await searchYouTube(trimmed, type, 24);
           if (cancelled) return;
@@ -172,7 +178,7 @@ const Search = () => {
   }, []);
 
   const tracks = useMemo(() => {
-    if (src === 'library') return items;
+    if (src === 'library' || src === 'spotify') return items;
     if (type === 'song' || type === 'video') return items.filter((i) => i.videoId).map(ytItemToTrack);
     return [];
   }, [items, src, type]);
@@ -262,6 +268,7 @@ const Search = () => {
         <Tabs
           tabs={[
             { value: 'yt', label: 'YouTube Music' },
+            ...(isSpotifyConnected() ? [{ value: 'spotify', label: 'Spotify' }] : []),
             { value: 'library', label: 'Library kamu' },
           ]}
           active={src}
@@ -354,12 +361,14 @@ const Search = () => {
 
       {state === 'empty' && (
         <EmptyState
-          icon={src === 'library' ? Library : Music2}
+          icon={src === 'library' ? Library : src === 'spotify' ? AudioLines : Music2}
           title="Tidak ada hasil"
           description={
             src === 'library'
               ? `Tidak ada lagu upload yang cocok dengan "${query}". Coba cari di YouTube Music.`
-              : `Tidak menemukan "${query}" di YouTube Music. Coba kata kunci lain.`
+              : src === 'spotify'
+                ? `Tidak menemukan "${query}" di Spotify. Coba kata kunci lain.`
+                : `Tidak menemukan "${query}" di YouTube Music. Coba kata kunci lain.`
           }
           action={
             src === 'library' ? (

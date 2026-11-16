@@ -102,8 +102,10 @@
   .kv-panel {
     background-color: var(--kv-panel);
     background-image:
-      radial-gradient(120% 78% at 50% -12%, color-mix(in srgb, var(--kv-ambient-a) 17%, transparent) 0%, transparent 62%),
-      linear-gradient(0deg, color-mix(in srgb, var(--kv-ambient-a) 5%, transparent), color-mix(in srgb, var(--kv-ambient-a) 5%, transparent));
+      radial-gradient(120% 78% at 50% -12%, color-mix(in srgb, var(--kv-ambient-a) 26%, transparent) 0%, transparent 62%),
+      radial-gradient(90% 70% at 88% 108%, color-mix(in srgb, var(--kv-ambient-b) 20%, transparent) 0%, transparent 60%),
+      radial-gradient(70% 60% at 8% 96%, color-mix(in srgb, var(--kv-ambient-c) 14%, transparent) 0%, transparent 58%),
+      linear-gradient(0deg, color-mix(in srgb, var(--kv-ambient-a) 7%, transparent), color-mix(in srgb, var(--kv-ambient-a) 7%, transparent));
     box-shadow: var(--kv-shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   }
   .dark .kv-panel {
@@ -114,7 +116,7 @@
     border: 1px solid var(--kv-line);
     border-radius: var(--kv-radius-lg);
     background-color: var(--kv-surface);
-    background-image: linear-gradient(0deg, color-mix(in srgb, var(--kv-ambient-a) 4%, transparent), color-mix(in srgb, var(--kv-ambient-a) 4%, transparent));
+    background-image: linear-gradient(0deg, color-mix(in srgb, var(--kv-ambient-a) 6%, transparent), color-mix(in srgb, var(--kv-ambient-a) 6%, transparent));
     box-shadow: var(--kv-shadow);
   }
 
@@ -374,8 +376,12 @@
     --kv-surface: oklch(0.24 0.006 95);
     --kv-surface-muted: oklch(0.3 0.006 95);
     --kv-panel: oklch(0.18 0.006 95);
-    background: var(--kv-panel);
+    /* Translucent scrim (not an opaque card) so the page ambient reads through
+       and the lyrics feel merged with the light; edges dissolve via the mask. */
+    background: rgb(0 0 0 / 0.42);
     color: var(--kv-ink);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
   }
 
   /* ---- immersive lyrics (Apple Music style) ---- */
@@ -439,7 +445,7 @@
       radial-gradient(38% 42% at 24% 30%, var(--mesh-a, #3a3a3a) 0%, transparent 70%),
       radial-gradient(42% 46% at 76% 64%, var(--mesh-b, #262626) 0%, transparent 72%),
       radial-gradient(30% 34% at 58% 18%, var(--mesh-c, #303030) 0%, transparent 70%);
-    filter: blur(48px) saturate(1.15);
+    filter: blur(56px) saturate(1.35);
     contain: paint;
     opacity: var(--mesh-opacity, 0.85);
     animation: kv-drift 26s ease-in-out infinite;
@@ -476,7 +482,7 @@
     inset: 0;
     pointer-events: none;
     z-index: 1;
-    background: radial-gradient(120% 90% at 50% 45%, transparent 40%, rgb(0 0 0 / 0.42) 100%);
+    background: radial-gradient(120% 90% at 50% 45%, transparent 46%, rgb(0 0 0 / 0.3) 100%);
   }
 
   /* ---- motion: restraint for lists, polish for the player stage ---- */

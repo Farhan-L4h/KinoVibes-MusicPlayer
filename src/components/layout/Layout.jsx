@@ -42,7 +42,7 @@ const Layout = () => {
         <TopBar />
         <div className="flex min-h-0 flex-1">
           <Sidebar />
-          <main className="kv-scroll min-w-0 flex-1 overflow-y-auto px-4 pb-8 pt-2 sm:px-7 sm:pt-3">
+          <main data-kv-main className="kv-scroll min-w-0 flex-1 overflow-y-auto px-4 pb-8 pt-2 sm:px-7 sm:pt-3">
             {showDeckCard && <VideoDeckCard />}
             <PageTransition>
               <Suspense fallback={<p role="status" className="py-12 text-center">Memuat halaman…</p>}><Outlet /></Suspense>

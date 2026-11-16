@@ -2,11 +2,14 @@ import { supabase, uploadFile, deleteFile, getSignedUrl, BUCKETS } from '../conf
 import { ytArt } from './ytApi';
 
 const YT_PATH_PREFIX = 'youtube:';
+const SPOTIFY_PATH_PREFIX = 'spotify:';
 
 export const transformMusicData = (dbRow) => {
   if (!dbRow) return null;
   const isYt = dbRow.source === 'youtube';
+  const isSp = dbRow.source === 'spotify';
   const videoId = isYt ? (dbRow.audio_path || '').replace(YT_PATH_PREFIX, '') : null;
+  const spotifyId = isSp ? (dbRow.audio_path || '').replace(SPOTIFY_PATH_PREFIX, '') : null;
   return {
     id: dbRow.id,
     userId: dbRow.user_id,
@@ -16,8 +19,9 @@ export const transformMusicData = (dbRow) => {
     albumId: dbRow.album_id,
     genre: dbRow.genre,
     duration: dbRow.duration,
-    audioUrl: dbRow.audio_url,
-    audioPath: dbRow.audio_path,
+    audioUrl: isSp ? null : dbRow.audio_url,
+    // Spotify ids are catalog references, not storage paths — never sign them.
+    audioPath: isSp ? null : dbRow.audio_path,
     // Older YouTube rows stored a 120px sliver; the video frame is canonical.
     albumArt: isYt ? (ytArt(videoId) || dbRow.album_art) : dbRow.album_art,
     albumArtPath: dbRow.album_art_path,
@@ -25,8 +29,10 @@ export const transformMusicData = (dbRow) => {
     lyricsPath: dbRow.lyrics_path,
     fileName: dbRow.file_name,
     fileSize: dbRow.file_size,
-    source: isYt ? 'youtube' : 'upload',
+    source: isYt ? 'youtube' : isSp ? 'spotify' : 'upload',
     videoId,
+    spotifyId,
+    uri: spotifyId ? `spotify:track:${spotifyId}` : null,
     playCount: dbRow.play_count || 0,
     isFullTrack: dbRow.is_full_track,
     createdAt: dbRow.created_at,
@@ -204,7 +210,7 @@ export const ensureYouTubeTrack = async (ytTrack, userId) => {
 };
 
 export const deleteMusic = async (track) => {
-  if (track.source !== 'youtube') {
+  if (track.source !== 'youtube' && track.source !== 'spotify') {
     if (track.audioPath) await deleteFile(BUCKETS.MUSIC, track.audioPath).catch(() => {});
     if (track.albumArtPath) await deleteFile(BUCKETS.ALBUM_ART, track.albumArtPath).catch(() => {});
     if (track.lyricsPath) await deleteFile(BUCKETS.LYRICS, track.lyricsPath).catch(() => {});
@@ -250,6 +256,9 @@ export const incrementPlayCount = async (musicId) => {
 export const downloadTrack = async (track) => {
   if (track.source === 'youtube') {
     throw new Error('Lagu YouTube hanya bisa distreaming, tidak diunduh.');
+  }
+  if (track.source === 'spotify') {
+    throw new Error('Lagu Spotify hanya bisa distreaming, tidak diunduh.');
   }
   const url = await resolveAudioUrl(track);
   if (!url) throw new Error('URL audio tidak tersedia.');

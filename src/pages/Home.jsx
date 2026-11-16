@@ -114,7 +114,7 @@ const Home = () => {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)] lg:gap-8">
+      <div className="grid min-w-0 gap-5 sm:gap-6 lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)] lg:gap-8">
         <section className="min-w-0 lg:border-r lg:border-kv-line lg:pr-8" aria-label="Pemutar musik">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
             <p className="font-mono text-xs text-kv-ink-muted">Sesi musik {displayName}</p>
@@ -125,7 +125,7 @@ const Home = () => {
             <div ref={deckRef} className="relative z-10"><Turntable track={currentTrack} /></div>
           </div>
           {currentTrack ? (
-            <div className="mt-6">
+            <div className="mt-4 sm:mt-6">
               <p className="font-mono text-[11px] text-kv-ink-muted">Pilihan saat ini</p>
               <div className="mt-2 flex items-start gap-3">
                 <div className="min-w-0 flex-1">
@@ -134,8 +134,8 @@ const Home = () => {
                 </div>
                 <button type="button" onClick={() => actions.toggleLike(currentTrack)} aria-label={liked ? 'Hapus dari favorit' : 'Tambah ke favorit'} aria-pressed={!!liked} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-kv-line hover:bg-kv-surface"><Heart size={18} fill={liked ? 'currentColor' : 'none'} /></button>
               </div>
-              <div className="mt-6"><Transport waveform /></div>
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-4 sm:mt-6"><Transport waveform /></div>
+              <div className="mt-4 flex flex-wrap gap-2 sm:mt-5">
                 <Button size="sm" variant="secondary" onClick={() => actions.openAddToPlaylist(currentTrack)}><ListMusic size={15} /> Ke playlist</Button>
                 <Button size="sm" variant="ghost" onClick={() => navigate('/lyrics')}><Mic2 size={15} /> Lirik</Button>
               </div>
@@ -149,7 +149,7 @@ const Home = () => {
           )}
         </section>
 
-        <div className="kv-stagger min-w-0 space-y-6">
+        <div className="kv-stagger min-w-0 space-y-5 sm:space-y-6">
           <section>
             <p className="mb-3 font-mono text-xs text-kv-ink-muted">Music Categories</p>
             <h2 className="font-display text-xl leading-relaxed sm:text-2xl">Musik untuk<br className="hidden sm:block" /> suasana hari ini.</h2>
@@ -200,7 +200,7 @@ const Home = () => {
           </section>
         </div>
       </div>
-      <section className="mt-10 border-t border-kv-line pt-6">
+      <section className="mt-8 border-t border-kv-line pt-5 sm:mt-10 sm:pt-6">
         <SectionHeader title="Lagu kamu" to="/library" />
         {loading ? (
           <div className="space-y-2" role="status" aria-label="Memuat library">{[...Array(4)].map((_, i) => <TrackRowSkeleton key={i} />)}</div>

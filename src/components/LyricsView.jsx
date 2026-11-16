@@ -164,8 +164,8 @@ const LyricsView = ({ compact = false }) => {
         </div>
       )}
 
-      <div className="kv-lyric-stage kv-grain relative isolate min-h-0 flex-1 overflow-hidden rounded-kv-lg">
-      <Ambient url={track?.albumArt} opacity={0.5} />
+      <div className="kv-lyric-stage kv-grain relative isolate min-h-0 flex-1 overflow-hidden">
+      <Ambient url={track?.albumArt} opacity={0.8} />
       <div
         ref={containerRef}
         onWheel={() => setFollow(false)}
@@ -174,7 +174,7 @@ const LyricsView = ({ compact = false }) => {
         tabIndex={0}
         role="region"
         aria-label="Lirik lagu"
-        className={`kv-lyrics kv-scroll relative z-10 h-full min-h-[300px] overflow-y-auto px-4 ${compact ? 'max-h-[52vh]' : 'max-h-[65vh]'}`}
+        className={`kv-lyrics kv-scroll relative z-10 h-full min-h-[300px] overflow-y-auto px-4 ${compact ? '' : 'max-h-[65vh]'}`}
       >
         {state === 'loading' && (
           <div className="space-y-4 py-4">

@@ -3,6 +3,8 @@ import { Howl } from 'howler';
 import { resolveAudioUrl, incrementPlayCount } from '../services/supabaseMusicApi';
 import { getSignedUrl, invalidateSignedUrl, BUCKETS } from '../config/supabase';
 import { ytPlayer } from '../player/youtube';
+import { spotifyPlayer } from '../player/spotify';
+import { isSpotifyConfigured, isSpotifyConnected, getSpotifyTrackPreview } from '../services/spotifyApi';
 import { updateMediaMetadata, updateMediaPosition, bindMediaActions, clearMediaSession } from '../player/mediaSession';
 import { getLyricsOffset } from '../services/lyricsApi';
 import { findActiveLine } from '../lib/lrc';
@@ -27,6 +29,8 @@ let sessionTimer = null;
 let lastSessionWrite = -Infinity;
 let lastSessionSnapshot = null;
 let lastPersistedSecond = -1;
+let spotifyMode = null; // 'sdk' (Premium, full track) | 'preview' (30s via Howler)
+let lastSpotifyPos = 0;
 const RETRY_DELAYS = [1000, 2000, 4000];
 const AUDIO_TIMEOUT = 20_000;
 
@@ -90,6 +94,9 @@ const pushRecent = (track) => {
     duration: track.duration,
     source: track.source,
     videoId: track.videoId || null,
+    spotifyId: track.spotifyId || null,
+    uri: track.uri || null,
+    audioUrl: track.audioUrl || null,
     audioPath: track.audioPath || null,
     bucket: track.bucket || null,
     lyricsPath: track.lyricsPath || null,
@@ -270,6 +277,10 @@ const useMusicStore = create((set, get) => ({
     if (prev?.source === 'youtube' && track.source !== 'youtube') {
       ytPlayer.pause();
     }
+    if (prev?.source === 'spotify' && spotifyMode === 'sdk' && track.id !== prev.id) {
+      spotifyPlayer.pause();
+    }
+    if (track.source !== 'spotify') spotifyMode = null;
 
     const list = contextList && contextList.length > 0 ? contextList : [track];
     const index = list.findIndex((t) => t.id === track.id);
@@ -292,7 +303,7 @@ const useMusicStore = create((set, get) => ({
 
     updateMediaMetadata(track);
     pushRecent(track);
-    if (!String(track.id).startsWith('yt:')) {
+    if (!/^(yt|sp):/.test(String(track.id))) {
       incrementPlayCount(track.id).catch(() => {});
     }
     get()._persistSession();
@@ -301,6 +312,10 @@ const useMusicStore = create((set, get) => ({
     if (track.source === 'youtube') {
       // VideoDock mounts the iframe; hooks below drive the state machine.
       return;
+    }
+
+    if (track.source === 'spotify') {
+      return get()._startSpotify(track, 0);
     }
 
     audioPlayback = { track, token, retries: 0 };
@@ -319,6 +334,10 @@ const useMusicStore = create((set, get) => ({
         set({ ytLoadNonce: get().ytLoadNonce + 1 });
       }
       return;
+    }
+    if (currentTrack.source === 'spotify' && spotifyMode !== 'preview') {
+      playToken++;
+      return get()._startSpotify(currentTrack, currentTime * 1000);
     }
     if (howl?.state() === 'loaded' && (status !== 'error' || audioPlayback?.playBlocked)) {
       audioPlayback.retries = 0;
@@ -349,6 +368,7 @@ const useMusicStore = create((set, get) => ({
     loadTimer = null;
     stopPolling();
     if (currentTrack.source === 'youtube') ytPlayer.pause();
+    else if (currentTrack.source === 'spotify' && spotifyMode === 'sdk') spotifyPlayer.pause();
     else if (howl?.state() === 'loaded') {
       const position = howl.seek();
       if (typeof position === 'number' && Number.isFinite(position)) set({ currentTime: position });
@@ -426,6 +446,8 @@ const useMusicStore = create((set, get) => ({
     if (currentTrack.source === 'youtube') {
       if (ytPlayer.isReady()) ytPlayer.seek(t);
       else seekAfterLoad = t;
+    } else if (currentTrack.source === 'spotify' && spotifyMode === 'sdk') {
+      spotifyPlayer.seek(t);
     } else if (howl?.state() === 'loaded') {
       howl.seek(t);
     }
@@ -440,6 +462,7 @@ const useMusicStore = create((set, get) => ({
     set({ volume, muted });
     if (howl) howl.volume(muted ? 0 : volume);
     ytPlayer.setVolume(muted ? 0 : volume);
+    spotifyPlayer.setVolume(muted ? 0 : volume);
     get()._persistPrefs();
   },
 
@@ -449,6 +472,7 @@ const useMusicStore = create((set, get) => ({
     const effective = muted ? 0 : get().volume;
     if (howl) howl.volume(effective);
     ytPlayer.setVolume(effective);
+    spotifyPlayer.setVolume(effective);
     get()._persistPrefs();
   },
 
@@ -633,12 +657,102 @@ const useMusicStore = create((set, get) => ({
     },
   },
 
+  _startSpotify: (track, positionMs = 0) => {
+    const token = playToken;
+    if (isSpotifyConfigured() && isSpotifyConnected()) {
+      spotifyMode = 'sdk';
+      lastSpotifyPos = positionMs;
+      spotifyPlayer.setVolume(get().muted ? 0 : get().volume);
+      spotifyPlayer.play(track, positionMs, get().spotifyHooks).catch(() => {
+        if (token !== playToken || get().currentTrack?.id !== track.id) return;
+        get()._spotifyFallback(track);
+      });
+      return;
+    }
+    if (track.audioUrl) {
+      spotifyMode = 'preview';
+      set({ duration: 30 });
+      audioPlayback = { track: { ...track, audioPath: null, bucket: null }, token, retries: 0 };
+      return loadAudio(set, get, audioPlayback);
+    }
+    spotifyMode = null;
+    const message = 'Hubungkan akun Spotify di Profil untuk memutar lagu ini.';
+    set({ isPlaying: false, status: 'error', error: message });
+    toast.error(message);
+  },
+
+  // Full-track streaming needs Premium; degrade to the 30s preview when the
+  // SDK refuses (free account, unsupported browser, revoked session).
+  _spotifyFallback: async (track) => {
+    if (!track || get().currentTrack?.id !== track.id || spotifyMode !== 'sdk') return;
+    spotifyMode = 'fallback';
+    spotifyPlayer.pause();
+    stopPolling();
+    let preview = track.audioUrl;
+    if (!preview && track.spotifyId && isSpotifyConnected()) {
+      preview = await getSpotifyTrackPreview(track.spotifyId).catch(() => null);
+    }
+    if (get().currentTrack?.id !== track.id || spotifyMode !== 'fallback') return;
+    if (preview) {
+      spotifyMode = 'preview';
+      set({ status: 'loading', currentTime: 0, duration: 30, error: null });
+      toast.info('Lagu penuh butuh Spotify Premium — memutar preview 30 detik.');
+      audioPlayback = { track: { ...track, audioPath: null, bucket: null, audioUrl: preview }, token: playToken, retries: 0 };
+      loadAudio(set, get, audioPlayback);
+    } else {
+      spotifyMode = null;
+      const message = 'Lagu ini butuh Spotify Premium, dan preview tidak tersedia.';
+      set({ isPlaying: false, status: 'error', error: message });
+      toast.error(message);
+      get()._persistSession();
+    }
+  },
+
+  spotifyHooks: {
+    onState: (s) => {
+      const cur = get().currentTrack;
+      if (!s || cur?.source !== 'spotify' || spotifyMode !== 'sdk') return;
+      const uri = s.track_window?.current_track?.uri;
+      if (cur.spotifyId && uri && uri !== `spotify:track:${cur.spotifyId}`) return;
+      const d = (s.duration || 0) / 1000;
+      if (d > 0 && Math.abs(d - get().duration) > 1) set({ duration: d });
+      if (!s.paused) {
+        lastSpotifyPos = s.position || 0;
+        if (!get().isPlaying) {
+          spotifyPlayer.pause();
+          return;
+        }
+        if (get().status !== 'playing') set({ status: 'playing', error: null });
+        get()._startPolling();
+        return;
+      }
+      if (!get().isPlaying || get().status === 'loading') return;
+      if ((s.position || 0) === 0 && d > 0 && lastSpotifyPos > s.duration - 3000) {
+        stopPolling();
+        get()._handleEnded();
+        return;
+      }
+      set({ isPlaying: false, status: 'paused' });
+      stopPolling();
+      get()._persistSession();
+    },
+    onError: (kind) => {
+      const cur = get().currentTrack;
+      if (cur?.source !== 'spotify' || spotifyMode !== 'sdk') return;
+      if (kind === 'auth') toast.error('Sesi Spotify berakhir. Hubungkan ulang di Profil.');
+      get()._spotifyFallback(cur);
+    },
+  },
+
   _handleEnded: () => {
     const { repeat, currentTrack, currentTime, duration } = get();
     if (repeat === 'one' && currentTrack) {
       if (currentTrack.source === 'youtube') {
         ytPlayer.seek(0);
         ytPlayer.play();
+      } else if (currentTrack.source === 'spotify' && spotifyMode === 'sdk') {
+        spotifyPlayer.seek(0);
+        spotifyPlayer.resume();
       } else if (howl) {
         howl.seek(0);
         howl.play();
@@ -659,6 +773,13 @@ const useMusicStore = create((set, get) => ({
       if (currentTrack.source === 'youtube') {
         t = ytPlayer.getTime() || 0;
         const d = ytPlayer.getDuration();
+        if (d && isFinite(d) && d > 0 && Math.abs(d - get().duration) > 1) {
+          set({ duration: d });
+        }
+      } else if (currentTrack.source === 'spotify' && spotifyMode === 'sdk') {
+        t = spotifyPlayer.getTime() || 0;
+        lastSpotifyPos = t * 1000;
+        const d = spotifyPlayer.getDuration();
         if (d && isFinite(d) && d > 0 && Math.abs(d - get().duration) > 1) {
           set({ duration: d });
         }
@@ -751,6 +872,8 @@ const useMusicStore = create((set, get) => ({
     stopHowl();
     stopPolling();
     ytPlayer.pause();
+    spotifyPlayer.pause();
+    spotifyMode = null;
     clearMediaSession();
     set({
       currentTrack: null,

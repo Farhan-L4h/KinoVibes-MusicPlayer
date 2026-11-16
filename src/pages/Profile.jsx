@@ -25,6 +25,7 @@ import { initials, cn } from '../lib/utils';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
+import SpotifyCard from '../components/SpotifyCard';
 import { toast } from '../stores/toast';
 
 const SHORTCUTS = [
@@ -164,6 +165,8 @@ const Profile = () => {
           </div>
         ))}
       </div>
+
+      <SpotifyCard />
 
       <section className="kv-card p-4 sm:p-5">
         <h2 className="mb-3 flex items-center gap-2 font-display text-sm leading-relaxed">

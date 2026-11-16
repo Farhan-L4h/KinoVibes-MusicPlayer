@@ -40,7 +40,7 @@ export default function GlobalAmbient() {
           '--mesh-a': colors?.a,
           '--mesh-b': colors?.b,
           '--mesh-c': colors?.c,
-          '--mesh-opacity': 0.6,
+          '--mesh-opacity': 0.9,
         }}
       />
     </div>

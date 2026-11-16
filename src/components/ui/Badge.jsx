@@ -3,6 +3,7 @@ import { cn } from '../../lib/utils';
 const TONES = {
   ink: 'border-kv-ink bg-kv-ink text-kv-panel',
   surface: 'border-kv-line bg-kv-surface text-kv-ink-muted',
+  success: 'border-kv-success bg-kv-success/10 text-kv-success',
 };
 
 export default function Badge({ tone = 'surface', className, children, ...props }) {

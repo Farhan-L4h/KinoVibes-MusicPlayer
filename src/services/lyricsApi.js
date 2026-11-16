@@ -31,13 +31,19 @@ const abortable = (promise, signal) => new Promise((resolve, reject) => {
 });
 
 const offsetKey = (trackId) => `kv-lyrics-offset:${trackId}`;
+const offsetCache = new Map();
 
 export const getLyricsOffset = (trackId) => {
+  if (offsetCache.has(trackId)) return offsetCache.get(trackId);
   const raw = localStorage.getItem(offsetKey(trackId));
-  return raw ? parseInt(raw, 10) || 0 : 0;
+  const value = raw ? parseInt(raw, 10) || 0 : 0;
+  if (offsetCache.size >= 200) offsetCache.delete(offsetCache.keys().next().value);
+  offsetCache.set(trackId, value);
+  return value;
 };
 
 export const setLyricsOffset = (trackId, ms) => {
+  offsetCache.set(trackId, ms);
   localStorage.setItem(offsetKey(trackId), String(ms));
 };
 
