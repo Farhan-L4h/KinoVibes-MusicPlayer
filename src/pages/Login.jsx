@@ -28,6 +28,7 @@ const friendlyError = (msg) => {
 const Login = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const gateNotice = useAuthStore((s) => s.gateNotice);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -46,6 +47,7 @@ const Login = () => {
     }
     setBusy(true);
     setError('');
+    useAuthStore.getState().clearGateNotice();
     try {
       await signIn(email.trim(), password);
       navigate('/');
@@ -94,6 +96,12 @@ const Login = () => {
         {error && (
           <div role="alert" className="mt-4 rounded-kv border border-kv-line bg-kv-panel px-3 py-2.5 text-sm text-kv-danger">
             {error}
+          </div>
+        )}
+
+        {!error && gateNotice && (
+          <div role="status" className="mt-4 rounded-kv border border-kv-line bg-kv-panel px-3 py-2.5 text-sm text-kv-ink">
+            {gateNotice}
           </div>
         )}
 

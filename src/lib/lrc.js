@@ -1,4 +1,6 @@
 const TIME_TAG = /\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
+// Enhanced LRC word-level stamps; LRCLIB serves them inline in syncedLyrics.
+const WORD_TAG = /<\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?>/g;
 const META_TAG = /^\[(ar|ti|al|by|offset|length):(.*)\]$/i;
 
 export const parseLrc = (text) => {
@@ -23,7 +25,7 @@ export const parseLrc = (text) => {
     const stamps = [...line.matchAll(TIME_TAG)];
     if (stamps.length === 0) continue;
 
-    const content = line.replace(TIME_TAG, '').trim();
+    const content = line.replace(TIME_TAG, '').replace(WORD_TAG, '').trim();
     for (const stamp of stamps) {
       const min = parseInt(stamp[1], 10);
       const sec = parseInt(stamp[2], 10);

@@ -1,7 +1,9 @@
 // Supabase Authentication Service
 import { supabase } from '../config/supabase';
 
-// Sign up with email and password
+// Sign up with email and password. New accounts start 'pending' and must be
+// approved by an admin before they can sign in, so any session created here is
+// immediately dropped.
 export const signUp = async (email, password, displayName) => {
   try {
     const { data, error } = await supabase.auth.signUp({
@@ -17,7 +19,8 @@ export const signUp = async (email, password, displayName) => {
 
     if (error) throw error;
 
-    // Create user profile in database
+    // Create user profile in database (the signup trigger also does this; the
+    // insert is idempotent and the DB forces role/status defaults).
     if (data.user) {
       await createUserProfile(data.user.id, {
         email: data.user.email,
@@ -26,11 +29,36 @@ export const signUp = async (email, password, displayName) => {
       });
     }
 
+    if (data.session) await supabase.auth.signOut();
     return data;
   } catch (error) {
     console.error('Sign up error:', error);
     throw error;
   }
+};
+
+// Throws with a user-facing Indonesian message when the account is not allowed
+// in. Tolerates the pre-migration schema (no status column) as approved.
+export const assertAccountAllowed = async (user) => {
+  const profile = await getUserProfile(user.id);
+  if (!profile) {
+    await supabase.auth.signOut();
+    throw new Error('Gagal memverifikasi status akun. Coba masuk lagi.');
+  }
+  if (profile.is_banned) {
+    await supabase.auth.signOut();
+    throw new Error('Akun kamu dibanned. Hubungi admin untuk info lebih lanjut.');
+  }
+  const status = profile.status || 'approved';
+  if (status === 'rejected') {
+    await supabase.auth.signOut();
+    throw new Error('Pendaftaran akun kamu ditolak admin.');
+  }
+  if (status !== 'approved') {
+    await supabase.auth.signOut();
+    throw new Error('Akun kamu menunggu persetujuan admin. Coba masuk lagi setelah disetujui.');
+  }
+  return profile;
 };
 
 // Sign in with email and password
@@ -42,6 +70,7 @@ export const signIn = async (email, password) => {
     });
 
     if (error) throw error;
+    await assertAccountAllowed(data.user);
     return data;
   } catch (error) {
     console.error('Sign in error:', error);

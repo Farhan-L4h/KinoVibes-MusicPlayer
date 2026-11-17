@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useMusicStore } from '../../stores/music';
+import { readTime } from '../../player/analyser';
 
-// Stylized oscilloscope, not a true FFT: YouTube audio is cross-origin and HTML5
-// uploads can't be tapped without rerouting playback, so the trace follows play
-// state and borrows the cover's ambient light. Calm ripple when paused.
+// Oscilloscope: real time-domain audio when the graph is live (uploads and
+// Spotify previews), stylized ripple for YouTube/Spotify SDK whose audio can't
+// be tapped. Borrows the cover's ambient light; calm when paused.
 export default function Visualizer({ className = '' }) {
   const canvasRef = useRef(null);
   const playingRef = useRef(false);
@@ -75,16 +76,27 @@ export default function Visualizer({ className = '' }) {
       ctx.stroke();
 
       const pts = [];
-      for (let x = 0; x <= w; x += step) {
-        const win = Math.pow(Math.sin(Math.PI * (x / w)), 0.85);
-        const swell = 0.78 + 0.22 * Math.sin(x * 0.006 - time * 0.9);
-        const y =
-          mid +
-          win * swell * pulse * amp *
-            (0.6 * Math.sin(x * 0.018 + time * 1.8) +
-              0.3 * Math.sin(x * 0.031 - time * 2.6 + 1.3) +
-              0.18 * Math.sin(x * 0.052 + time * 3.4 + 2.1));
-        pts.push([x, y]);
+      const wave = readTime();
+      if (wave) {
+        const gain = h * 0.44 * energy;
+        for (let x = 0; x <= w; x += step) {
+          const idx = Math.min(wave.length - 1, Math.round((x / w) * (wave.length - 1)));
+          const win = Math.pow(Math.sin(Math.PI * (x / w)), 0.3);
+          const y = mid + ((wave[idx] - 128) / 128) * gain * win;
+          pts.push([x, y]);
+        }
+      } else {
+        for (let x = 0; x <= w; x += step) {
+          const win = Math.pow(Math.sin(Math.PI * (x / w)), 0.85);
+          const swell = 0.78 + 0.22 * Math.sin(x * 0.006 - time * 0.9);
+          const y =
+            mid +
+            win * swell * pulse * amp *
+              (0.6 * Math.sin(x * 0.018 + time * 1.8) +
+                0.3 * Math.sin(x * 0.031 - time * 2.6 + 1.3) +
+                0.18 * Math.sin(x * 0.052 + time * 3.4 + 2.1));
+          pts.push([x, y]);
+        }
       }
       const trace = (mirror) => {
         ctx.beginPath();

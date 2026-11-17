@@ -60,26 +60,36 @@ export default function NowPlaying() {
       <div className="relative z-10 mx-auto flex w-full max-w-6xl min-h-0 flex-1 flex-col p-3 sm:p-6 lg:p-8">
         <header className="mb-3 flex shrink-0 items-center justify-between lg:mb-6">
           <IconButton label="Tutup tampilan sedang diputar" onClick={() => setNowPlayingOpen(false)}><ChevronDown size={22} /></IconButton>
-          <p className="font-mono text-xs">{isYt ? 'YouTube' : track.source === 'spotify' ? 'Spotify' : 'Koleksi pribadi'}</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-kv-ink-muted">{isYt ? 'YouTube' : track.source === 'spotify' ? 'Spotify' : 'Koleksi pribadi'}</p>
           <IconButton label={fav ? 'Hapus dari favorit' : 'Tambah ke favorit'} onClick={() => actions.toggleLike(track)}><Heart size={19} fill={fav ? 'currentColor' : 'none'} /></IconButton>
         </header>
         <div className="grid min-h-0 flex-1 items-start gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-12 lg:overflow-hidden">
-          <div data-kv-np-left className="kv-scroll space-y-3 sm:space-y-4 lg:h-full lg:min-h-0 lg:space-y-5 lg:overflow-y-auto lg:pr-1">
-            <div className="mx-auto flex w-full max-w-[300px] items-stretch gap-3 sm:max-w-[460px]">
-              <div className="hidden w-9 shrink-0 lg:block" aria-hidden="true">
-                <VerticalSpectrum />
-              </div>
-              <div ref={slot} key={`art-${track.id}`} className="kv-fade relative aspect-square min-w-0 flex-1 overflow-hidden rounded-kv-lg bg-kv-muted shadow-kv-lg">
-                {!isYt && <TrackArt src={track.albumArt} videoId={track.videoId} alt={`Sampul ${track.title}`} placeholderClassName="absolute inset-0 flex items-center justify-center text-kv-ink-muted" placeholderSize={80} />}
+          <div data-kv-np-left className="kv-scroll space-y-3 sm:space-y-4 lg:flex lg:h-full lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-4 lg:space-y-0 lg:overflow-hidden lg:pr-1 [@media(max-height:760px)]:lg:gap-3">
+            <div className="lg:flex lg:min-h-0 lg:flex-1 lg:items-center lg:justify-center">
+              <div className="mx-auto flex w-full max-w-[300px] items-stretch gap-3 sm:max-w-[460px] lg:mx-2 lg:h-full lg:max-h-full lg:w-auto lg:max-w-full">
+                <div className="hidden w-9 shrink-0 lg:block" aria-hidden="true">
+                  <VerticalSpectrum />
+                </div>
+                <div className="relative mx-2 min-w-0 flex-1 lg:mx-0 lg:aspect-square lg:h-[min(100%,356px)] lg:w-auto lg:flex-none">
+                  <div
+                    aria-hidden="true"
+                    className="absolute -inset-2 rounded-[28px] opacity-55 blur-2xl transition-opacity duration-700"
+                    style={{ background: 'linear-gradient(140deg, color-mix(in srgb, var(--kv-ambient-a) 60%, transparent), color-mix(in srgb, var(--kv-ambient-b) 42%, transparent) 55%, color-mix(in srgb, var(--kv-ambient-c) 30%, transparent))' }}
+                  />
+                  <div ref={slot} key={`art-${track.id}`} className="kv-fade relative aspect-square w-full overflow-hidden rounded-kv-lg bg-kv-muted shadow-kv-lg ring-1 ring-kv-line/60 lg:aspect-auto lg:h-full">
+                    {!isYt && <TrackArt src={track.albumArt} videoId={track.videoId} alt={`Sampul ${track.title}`} placeholderClassName="absolute inset-0 flex items-center justify-center text-kv-ink-muted" placeholderSize={80} />}
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="h-12 sm:h-24"><Visualizer /></div>
-            <div key={`meta-${track.id}`} className="kv-fade space-y-2 sm:space-y-3 lg:space-y-5">
-              <h1 className="break-words font-body text-lg font-bold leading-tight sm:text-2xl">{track.title}</h1>
-              <p className="text-sm text-kv-ink-muted sm:text-base">{track.artist}</p>
+            <div className="h-12 sm:h-24 lg:h-16 lg:shrink-0 [@media(max-height:760px)]:lg:h-10 [@media(max-height:660px)]:lg:hidden"><Visualizer /></div>
+            <div key={`meta-${track.id}`} className="kv-fade space-y-1.5 sm:space-y-2 lg:shrink-0 lg:space-y-3">
+              <h1 className="break-words font-display text-xl leading-tight tracking-tight sm:text-3xl [@media(max-height:760px)]:lg:text-2xl">{track.title}</h1>
+              <p className="text-sm font-semibold text-kv-ink-muted sm:text-base">{track.artist}</p>
+              {track.album && <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-kv-ink-muted/80">{track.album}</p>}
             </div>
-            <Transport waveform />
-            <div className="flex justify-center gap-2">
+            <div className="lg:shrink-0"><Transport waveform /></div>
+            <div className="flex justify-center gap-2 lg:shrink-0 [@media(max-height:660px)]:lg:hidden">
               <IconButton label="Tambah ke playlist" onClick={() => actions.openAddToPlaylist(track)}><ListPlus size={20} /></IconButton>
               {!isYt && track.source !== 'spotify' && <IconButton label="Unduh lagu" onClick={() => actions.download(track)}><Download size={20} /></IconButton>}
             </div>

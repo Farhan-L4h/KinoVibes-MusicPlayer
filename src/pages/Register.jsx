@@ -47,13 +47,12 @@ const Register = () => {
     setError('');
     try {
       const data = await signUp(email.trim(), password, name.trim());
-      if (data?.session) {
-        toast.success('Akun dibuat. Selamat datang!');
-        navigate('/');
+      if (data?.session || data?.user?.identities?.length) {
+        toast.info('Akun dibuat. Menunggu persetujuan admin sebelum bisa masuk.');
       } else {
-        toast.info('Cek email kamu untuk konfirmasi akun.');
-        navigate('/login');
+        toast.info('Cek email kamu untuk konfirmasi, lalu tunggu persetujuan admin.');
       }
+      navigate('/login');
     } catch (err) {
       setError(friendlyError(err.message));
     } finally {
@@ -65,7 +64,9 @@ const Register = () => {
     <AuthShell>
       <div className="rounded-kv-lg border border-kv-line bg-kv-surface p-6 sm:p-8">
         <h2 className="font-display text-2xl leading-relaxed">Daftar</h2>
-        <p className="mt-1 text-sm text-kv-ink-muted">Bikin akun, mulai koleksi musik kamu.</p>
+        <p className="mt-1 text-sm text-kv-ink-muted">
+          Bikin akun dulu. Admin menyetujui pendaftaranmu, baru kamu bisa masuk dan mulai koleksi musik.
+        </p>
 
         {error && (
           <div role="alert" className="mt-4 rounded-kv border border-kv-line bg-kv-panel px-3 py-2.5 text-sm text-kv-danger">

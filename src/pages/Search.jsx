@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search as SearchIcon, Youtube, Library, Loader2, X, Clock3, Music2, Disc3, UserRound, ListPlus, AudioLines } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
+import { useMusicStore } from '../stores/music';
 import { searchYouTube, suggestYouTube, ytItemToTrack } from '../services/ytApi';
 import { searchSpotify, isSpotifyConnected } from '../services/spotifyApi';
 import { searchMusic } from '../services/supabaseMusicApi';
@@ -90,6 +91,7 @@ const Search = () => {
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [suggestions, setSuggestions] = useState([]);
+  const [quickTracks, setQuickTracks] = useState([]);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [history, setHistory] = useState(readHistory);
   const [importOpen, setImportOpen] = useState(false);
@@ -159,12 +161,18 @@ const Search = () => {
   const fetchSuggestions = useMemo(
     () =>
       debounce(async (value) => {
-        if (src !== 'yt' || value.trim().length < 2) {
+        const term = value.trim();
+        if (src !== 'yt' || term.length < 2) {
           setSuggestions([]);
+          setQuickTracks([]);
           return;
         }
-        const list = await suggestYouTube(value.trim());
-        setSuggestions(list);
+        const [sug, tracks] = await Promise.all([
+          suggestYouTube(term).catch(() => []),
+          searchYouTube(term, 'song', 5).catch(() => []),
+        ]);
+        setSuggestions(sug || []);
+        setQuickTracks((tracks || []).filter((t) => t.videoId));
       }, 280),
     [src]
   );
@@ -231,6 +239,7 @@ const Search = () => {
                   setInput('');
                   setQuery('');
                   setSuggestions([]);
+                  setQuickTracks([]);
                   syncUrl('', src, type);
                   inputRef.current?.focus();
                 }}
@@ -247,9 +256,9 @@ const Search = () => {
           </Button>
         </form>
 
-        {suggestOpen && suggestions.length > 0 && (
+        {suggestOpen && (suggestions.length > 0 || quickTracks.length > 0) && (
           <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-kv border border-kv-line bg-kv-surface shadow-kv-lg sm:right-24">
-            {suggestions.map((s) => (
+            {suggestions.slice(0, 4).map((s) => (
               <button
                 key={s}
                 type="button"
@@ -260,6 +269,34 @@ const Search = () => {
                 <span className="truncate">{s}</span>
               </button>
             ))}
+            {quickTracks.map((item) => (
+              <button
+                key={item.videoId}
+                type="button"
+                onClick={() => {
+                  setSuggestOpen(false);
+                  useMusicStore.getState().playTrack(ytItemToTrack(item));
+                }}
+                className="flex min-h-[52px] w-full items-center gap-3 border-b border-kv-line px-3.5 py-2 text-left last:border-b-0 hover:bg-kv-muted"
+                aria-label={`Putar ${item.title}`}
+              >
+                <span className="block h-9 w-9 shrink-0 overflow-hidden rounded-md border border-kv-line bg-kv-muted">
+                  <TrackArt src={item.thumbnail} videoId={item.videoId} small placeholderSize={14} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold">{item.title}</span>
+                  <span className="block truncate font-mono text-xs text-kv-ink-muted">{item.artist}</span>
+                </span>
+                <Music2 size={14} className="shrink-0 text-kv-ink-muted" />
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => runSearch(input)}
+              className="flex min-h-[44px] w-full items-center gap-2 px-3.5 py-2.5 text-left font-mono text-xs font-bold uppercase tracking-widest text-kv-ink-muted hover:bg-kv-muted hover:text-kv-ink"
+            >
+              <SearchIcon size={13} /> Lihat semua hasil
+            </button>
           </div>
         )}
       </div>

@@ -4,6 +4,7 @@ import { resolveAudioUrl, incrementPlayCount } from '../services/supabaseMusicAp
 import { getSignedUrl, invalidateSignedUrl, BUCKETS } from '../config/supabase';
 import { ytPlayer } from '../player/youtube';
 import { spotifyPlayer } from '../player/spotify';
+import { probeCors, withCorsAudio, tapHowl, markLive } from '../player/analyser';
 import { isSpotifyConfigured, isSpotifyConnected, getSpotifyTrackPreview } from '../services/spotifyApi';
 import { updateMediaMetadata, updateMediaPosition, bindMediaActions, clearMediaSession } from '../player/mediaSession';
 import { getLyricsOffset } from '../services/lyricsApi';
@@ -191,8 +192,15 @@ const loadAudio = async (set, get, playback) => {
       : await resolveAudioUrl(track);
     if (!valid() || !get().isPlaying) return;
     if (!url) throw new Error('Audio tidak tersedia');
-    instance = new Howl({
+    markLive(false);
+    const corsMode = await probeCors(url);
+    if (!valid() || !get().isPlaying) return;
+    // Howler rejects extension-less URLs (Spotify previews, blobs); format
+    // only gates its codec check — the browser still sniffs the real content.
+    const format = /\.([a-z0-9]+)$/i.test(url.split('?')[0]) ? undefined : ['mp3'];
+    instance = withCorsAudio(corsMode === 'cors', () => new Howl({
       src: [url],
+      format,
       html5: true,
       volume: get().muted ? 0 : get().volume,
       onplay: playing,
@@ -230,10 +238,11 @@ const loadAudio = async (set, get, playback) => {
         set({ isPlaying: false, status: 'error', error: message });
         toast.error(message);
       },
-    });
+    }));
     howl = instance;
     bindNativeAudioEvents(instance, buffering, playing);
     instance.play();
+    if (corsMode !== 'none' && tapHowl(instance)) markLive(true);
   } catch (err) {
     const status = Number(err?.status || err?.statusCode);
     const transient = err?.name === 'TimeoutError' || err instanceof TypeError ||
@@ -311,6 +320,7 @@ const useMusicStore = create((set, get) => ({
 
     if (track.source === 'youtube') {
       // VideoDock mounts the iframe; hooks below drive the state machine.
+      markLive(false);
       return;
     }
 
@@ -661,6 +671,7 @@ const useMusicStore = create((set, get) => ({
     const token = playToken;
     if (isSpotifyConfigured() && isSpotifyConnected()) {
       spotifyMode = 'sdk';
+      markLive(false);
       lastSpotifyPos = positionMs;
       spotifyPlayer.setVolume(get().muted ? 0 : get().volume);
       spotifyPlayer.play(track, positionMs, get().spotifyHooks).catch(() => {
@@ -863,6 +874,7 @@ const useMusicStore = create((set, get) => ({
 
   stopAndClear: () => {
     playToken++;
+    markLive(false);
     cancelAudioWork();
     audioPlayback = null;
     seekAfterLoad = null;

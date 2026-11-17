@@ -159,6 +159,33 @@
     width: 8px;
     height: 8px;
   }
+  .kv-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .kv-scroll::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--kv-ink) 22%, transparent);
+  }
+  .kv-scroll::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--kv-ink) 40%, transparent);
+  }
+  .kv-scroll::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  .kv-scroll::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  /* Chrome lets scrollbar-width/color override the webkit pseudo-elements
+     (native thin bar keeps arrow buttons); reset them so the styled
+     thumb/track above win. Firefox keeps the standard thin bar. */
+  @supports selector(::-webkit-scrollbar) {
+    .kv-scroll {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+  }
 
   .kv-mono-label {
     @apply font-mono text-[10px] font-bold uppercase tracking-[0.18em];
@@ -376,9 +403,9 @@
     --kv-surface: oklch(0.24 0.006 95);
     --kv-surface-muted: oklch(0.3 0.006 95);
     --kv-panel: oklch(0.18 0.006 95);
-    /* Translucent scrim (not an opaque card) so the page ambient reads through
-       and the lyrics feel merged with the light; edges dissolve via the mask. */
-    background: rgb(0 0 0 / 0.42);
+    /* No card: a soft radial depth that dissolves into the page ambient, so the
+       lyrics read as part of the background. Edges fade via the mask. */
+    background: radial-gradient(130% 105% at 50% 50%, rgb(0 0 0 / 0.34) 0%, rgb(0 0 0 / 0.2) 52%, transparent 78%);
     color: var(--kv-ink);
     -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
     mask-image: linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
@@ -397,14 +424,14 @@
     font-weight: 650;
     letter-spacing: -0.015em;
     line-height: 1.22;
-    font-size: clamp(1.35rem, 2.4vw, 2.05rem);
+    font-size: clamp(1.15rem, min(2.4vw, 3.6vh), 2.05rem);
     padding: 0.42em 0.6em;
     border-radius: 14px;
     color: var(--kv-lyric-ink);
     opacity: 0.5;
     filter: blur(1.4px);
     transform-origin: left center;
-    text-shadow: 0 0 0 rgba(255, 255, 255, 0);
+    text-shadow: 0 1px 14px rgb(0 0 0 / 0.4);
     transition:
       opacity 560ms cubic-bezier(0.22, 1, 0.36, 1),
       transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -425,7 +452,7 @@
     opacity: 1;
     filter: blur(0);
     transform: scale(1.04);
-    text-shadow: 0 0 32px rgba(255, 255, 255, 0.28);
+    text-shadow: 0 1px 14px rgb(0 0 0 / 0.4), 0 0 32px rgba(255, 255, 255, 0.28);
   }
   .kv-lyric-line[data-passed='true'] {
     opacity: 0.46;
@@ -482,7 +509,7 @@
     inset: 0;
     pointer-events: none;
     z-index: 1;
-    background: radial-gradient(120% 90% at 50% 45%, transparent 46%, rgb(0 0 0 / 0.3) 100%);
+    background: radial-gradient(120% 90% at 50% 45%, transparent 60%, rgb(0 0 0 / 0.12) 100%);
   }
 
   /* ---- motion: restraint for lists, polish for the player stage ---- */

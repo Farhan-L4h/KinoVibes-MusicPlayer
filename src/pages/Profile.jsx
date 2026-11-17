@@ -13,8 +13,9 @@ import {
   Heart,
   ListMusic,
   Keyboard,
+  ShieldCheck,
 } from 'lucide-react';
-import { useAuthStore } from '../stores/auth';
+import { useAuthStore, selectIsAdmin } from '../stores/auth';
 import { useFavoritesStore } from '../stores/favorites';
 import { usePlaylistStore } from '../stores/playlist';
 import { useMusicStore } from '../stores/music';
@@ -47,6 +48,8 @@ const Profile = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
+  const profile = useAuthStore((s) => s.profile);
+  const isAdmin = useAuthStore(selectIsAdmin);
   const favCount = useFavoritesStore((s) => s.tracks.length);
   const playlistCount = usePlaylistStore((s) => s.playlists.length);
   const theme = useThemeStore((s) => s.theme);
@@ -139,15 +142,24 @@ const Profile = () => {
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-xl leading-relaxed sm:text-2xl">{displayName}</h1>
           <p className="truncate text-sm text-kv-ink-muted">{user?.email}</p>
-          {joined && (
-            <p className="mt-1 font-mono text-[11px] text-kv-ink-muted">
-              Bergabung {joined}
-            </p>
-          )}
+          <p className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-[11px] text-kv-ink-muted">
+            {joined && <span>Bergabung {joined}</span>}
+            {profile?.role && profile.role !== 'user' && (
+              <Badge tone="ink">{profile.role === 'superadmin' ? 'Superadmin' : 'Admin'}</Badge>
+            )}
+            {profile?.is_limited && <Badge tone="surface">Dibatasi</Badge>}
+          </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={handleLogout}>
-          <LogOut size={15} /> Keluar
-        </Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {isAdmin && (
+            <Button variant="primary" size="sm" onClick={() => navigate('/admin')}>
+              <ShieldCheck size={15} /> Panel admin
+            </Button>
+          )}
+          <Button variant="secondary" size="sm" onClick={handleLogout}>
+            <LogOut size={15} /> Keluar
+          </Button>
+        </div>
       </header>
 
       <div className="grid grid-cols-3 gap-3">

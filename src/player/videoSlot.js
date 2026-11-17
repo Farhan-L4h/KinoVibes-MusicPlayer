@@ -1,6 +1,6 @@
 // Inline video slots, highest priority wins: NowPlaying (3) > Home deck (2) >
-// route deck card (1). The iframe is portalled into the winner so it stays in
-// normal flow instead of floating over the UI.
+// lyrics cover (1). The persistent host positions itself over the winner so the
+// iframe never reparents (no playback reload on navigation).
 const slots = new Map();
 
 const emit = () => window.dispatchEvent(new Event('kv-video-slot'));

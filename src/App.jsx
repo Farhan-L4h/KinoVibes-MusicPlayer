@@ -16,6 +16,7 @@ const Playlists = lazy(() => import('./pages/Playlists'));
 const PlaylistDetail = lazy(() => import('./pages/PlaylistDetail'));
 const Favorites = lazy(() => import('./pages/Favorites'));
 const Upload = lazy(() => import('./pages/Upload'));
+const Admin = lazy(() => import('./pages/Admin'));
 const Profile = lazy(() => import('./pages/Profile'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
@@ -47,6 +48,7 @@ const App = () => {
           <Route path="/playlists/:id" element={<PlaylistDetail />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/upload" element={<Upload />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Route>

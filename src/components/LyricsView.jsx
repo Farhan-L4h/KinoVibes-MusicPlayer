@@ -98,21 +98,26 @@ const LyricsView = ({ compact = false }) => {
   const totalOffsetMs = offset + (lyrics?.baseOffsetMs || 0);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <button type="button" className="min-h-11 rounded-full border border-kv-line px-4 text-xs font-semibold" aria-pressed={follow} onClick={() => setFollow(!follow)}>{follow ? 'Jeda gulir otomatis' : 'Ikuti lirik'}</button>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex h-full min-h-0 flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 px-1">
+        <button
+          type="button"
+          className="min-h-11 rounded-full px-3 text-xs font-semibold text-kv-ink-muted transition-colors hover:bg-kv-muted hover:text-kv-ink"
+          aria-pressed={follow}
+          onClick={() => setFollow(!follow)}
+        >
+          {follow ? 'Jeda gulir otomatis' : 'Ikuti lirik'}
+        </button>
         {lyrics?.source === 'user' && <Badge>Lirik kamu</Badge>}
         {lyrics?.source === 'lrclib' && <Badge>LRCLIB</Badge>}
         {lyrics?.synced?.length ? <Badge tone="ink">Sync</Badge> : lyrics?.plain ? <Badge>Teks</Badge> : null}
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center">
           <button
             type="button"
             onClick={() => load(true)}
             aria-label="Muat ulang lirik"
             title="Muat ulang lirik"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-kv-line bg-kv-surface hover:bg-kv-muted"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-kv-ink-muted transition-colors hover:bg-kv-muted hover:text-kv-ink"
           >
             <RefreshCw size={14} />
           </button>
@@ -121,7 +126,7 @@ const LyricsView = ({ compact = false }) => {
             onClick={() => setEditing(true)}
             aria-label="Edit lirik manual"
             title="Edit lirik manual"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-kv-line bg-kv-surface hover:bg-kv-muted"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-kv-ink-muted transition-colors hover:bg-kv-muted hover:text-kv-ink"
           >
             <Pencil size={14} />
           </button>
@@ -129,7 +134,7 @@ const LyricsView = ({ compact = false }) => {
       </div>
 
       {!compact && lyrics?.synced?.length > 0 && (
-        <div className="flex items-center gap-2 rounded-kv border border-kv-line bg-kv-surface px-3 py-2">
+        <div className="flex items-center gap-1 px-2 py-1">
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-kv-ink-muted">
             Offset
           </span>
@@ -137,7 +142,7 @@ const LyricsView = ({ compact = false }) => {
             type="button"
             onClick={() => changeOffset(-100)}
             aria-label="Lirik lebih lambat 100 milidetik"
-            className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-kv-muted"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-kv-ink-muted transition-colors hover:bg-kv-muted hover:text-kv-ink"
           >
             <Minus size={14} />
           </button>
@@ -148,7 +153,7 @@ const LyricsView = ({ compact = false }) => {
             type="button"
             onClick={() => changeOffset(100)}
             aria-label="Lirik lebih cepat 100 milidetik"
-            className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-kv-muted"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-kv-ink-muted transition-colors hover:bg-kv-muted hover:text-kv-ink"
           >
             <Plus size={14} />
           </button>
@@ -157,7 +162,7 @@ const LyricsView = ({ compact = false }) => {
             onClick={() => changeOffset(null)}
             aria-label="Reset offset"
             title="Reset offset"
-            className="ml-auto flex h-11 w-11 items-center justify-center rounded-full hover:bg-kv-muted"
+            className="ml-auto flex h-11 w-11 items-center justify-center rounded-full text-kv-ink-muted transition-colors hover:bg-kv-muted hover:text-kv-ink"
           >
             <RotateCcw size={14} />
           </button>

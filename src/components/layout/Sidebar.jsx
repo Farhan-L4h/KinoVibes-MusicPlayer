@@ -1,6 +1,6 @@
 import { NavLink, Link } from 'react-router-dom';
-import { Home, Search, Music2, Heart, ListMusic, Mic2, UploadCloud } from 'lucide-react';
-import { useAuthStore } from '../../stores/auth';
+import { Home, Search, Music2, Heart, ListMusic, Mic2, UploadCloud, ShieldCheck } from 'lucide-react';
+import { useAuthStore, selectIsAdmin } from '../../stores/auth';
 import { initials, cn } from '../../lib/utils';
 
 const NAV = [
@@ -10,20 +10,24 @@ const NAV = [
   { to: '/favorites', label: 'Favorit', icon: Heart },
   { to: '/playlists', label: 'Playlist', icon: ListMusic },
   { to: '/lyrics', label: 'Lirik', icon: Mic2 },
-  { to: '/upload', label: 'Upload', icon: UploadCloud },
 ];
 
 const Sidebar = () => {
   const user = useAuthStore((s) => s.user);
+  const isAdmin = useAuthStore(selectIsAdmin);
   const displayName =
     user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kamu';
+
+  const items = isAdmin
+    ? [...NAV, { to: '/upload', label: 'Upload', icon: UploadCloud }, { to: '/admin', label: 'Admin', icon: ShieldCheck }]
+    : NAV;
 
   return (
     <aside
       className="hidden w-kv-rail shrink-0 flex-col items-center gap-1.5 border-r border-kv-line py-5 lg:flex"
       aria-label="Navigasi utama"
     >
-      {NAV.map(({ to, label, icon: Icon, end }) => (
+      {items.map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
           to={to}

@@ -12,14 +12,17 @@ import {
   Music2,
   Info,
 } from 'lucide-react';
-import { useAuthStore } from '../stores/auth';
+import { useAuthStore, selectIsAdmin } from '../stores/auth';
 import { uploadMusic, isValidAudioFile, isValidImageFile, isValidLyricsFile } from '../services/supabaseMusicApi';
 import { useTrackActions } from '../hooks/useTrackActions';
 import { cleanTitle, cn } from '../lib/utils';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
+import EmptyState from '../components/ui/EmptyState';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from '../stores/toast';
+import { ShieldAlert } from 'lucide-react';
 
 const STAGES = [
   { key: 'audio', label: 'Audio' },
@@ -37,6 +40,8 @@ const formatSize = (bytes) => {
 const Upload = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const profile = useAuthStore((s) => s.profile);
+  const isAdmin = useAuthStore(selectIsAdmin);
   const actions = useTrackActions();
 
   const [audioFile, setAudioFile] = useState(null);
@@ -152,6 +157,25 @@ const Upload = () => {
       setBusy(false);
     }
   };
+
+  if (!profile) return <LoadingSpinner />;
+
+  if (!isAdmin) {
+    return (
+      <div className="mx-auto max-w-xl">
+        <EmptyState
+          icon={ShieldAlert}
+          title="Upload khusus admin"
+          description="Fitur upload lagu hanya untuk admin dan superadmin. Akun kamu tetap bisa streaming, favorit, dan bikin playlist."
+          action={
+            <Button size="sm" variant="secondary" onClick={() => navigate('/search')}>
+              <Music2 size={15} /> Cari lagu saja
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   if (done) {
     return (
