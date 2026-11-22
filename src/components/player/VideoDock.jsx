@@ -17,6 +17,7 @@ const VideoDock = () => {
   const currentTrack = useMusicStore((s) => s.currentTrack);
   const ytLoadNonce = useMusicStore((s) => s.ytLoadNonce);
   const nowPlayingOpen = useMusicStore((s) => s.nowPlayingOpen);
+  const playerMode = useMusicStore((s) => s.playerMode);
   const isYt = currentTrack?.source === 'youtube';
   const videoId = currentTrack?.videoId;
   const hostRef = useRef(null);
@@ -111,6 +112,14 @@ const VideoDock = () => {
       host.style.height = `${height}px`;
       host.style.borderRadius = radius;
       host.style.zIndex = npOpen ? '60' : '30';
+      const isMusicMode = useMusicStore.getState().playerMode === 'music';
+      if (isMusicMode && docked) {
+        host.style.opacity = '0';
+        host.style.pointerEvents = 'none';
+      } else {
+        host.style.opacity = '1';
+        host.style.pointerEvents = 'auto';
+      }
       // Cover-crop the 16:9 frame into the (often square) slot so no black
       // letterbox bars show; keep the iframe itself >=200x200 for YouTube ToS.
       const frame = frameRef.current;
@@ -147,7 +156,7 @@ const VideoDock = () => {
       ro.disconnect();
       observedRef.current = null;
     };
-  }, [isYt, videoId, nowPlayingOpen]);
+  }, [isYt, videoId, nowPlayingOpen, playerMode]);
 
   useEffect(() => {
     if (!isYt || !videoId || !hasSlot) return;
@@ -170,17 +179,19 @@ const VideoDock = () => {
   return (
     <div
       ref={hostRef}
-      className={`pointer-events-none fixed overflow-hidden bg-black ${fallback ? 'border border-kv-line shadow-kv-lg' : ''}`}
+      className={`pointer-events-none fixed overflow-hidden bg-black transition-opacity duration-300 ${fallback && playerMode === 'video' ? 'border border-kv-line shadow-kv-lg' : ''}`}
       style={{ display: hasSlot ? 'block' : 'none' }}
     >
       <div ref={frameRef} className="absolute [&_iframe]:h-full [&_iframe]:w-full" />
-      <button
-        type="button"
-        aria-label="Jeda atau putar video"
-        className="pointer-events-auto absolute inset-0 cursor-pointer"
-        onClick={() => useMusicStore.getState().togglePlay()}
-      />
-      {fallback && (
+      {(!fallback || playerMode === 'video') && (
+        <button
+          type="button"
+          aria-label="Jeda atau putar video"
+          className="pointer-events-auto absolute inset-0 cursor-pointer"
+          onClick={() => useMusicStore.getState().togglePlay()}
+        />
+      )}
+      {fallback && playerMode === 'video' && (
         <button
           type="button"
           aria-label="Perbesar pemutar"

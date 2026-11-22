@@ -44,13 +44,15 @@ export default function Visualizer({ className = '' }) {
     };
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const isMobile = window.innerWidth < 768;
+      const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
       canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
       canvas.height = Math.max(1, Math.round(canvas.clientHeight * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
     const draw = (t) => {
+      if (document.hidden) return; // skip frame when tab is in background
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       if (!w || !h) return;
@@ -60,7 +62,8 @@ export default function Visualizer({ className = '' }) {
       const time = t / 1000;
       const amp = h * 0.36 * energy;
       const pulse = 0.86 + 0.14 * Math.sin(time * 2.1);
-      const step = Math.max(2, Math.floor(w / 240));
+      const isMobile = window.innerWidth < 768;
+      const step = Math.max(isMobile ? 4 : 2, Math.floor(w / 240));
 
       const grad = ctx.createLinearGradient(0, 0, w, 0);
       grad.addColorStop(0, a);
@@ -138,7 +141,7 @@ export default function Visualizer({ className = '' }) {
       const target = playingRef.current ? 1 : 0.14;
       energy += (target - energy) * 0.08;
       draw(t);
-      if (!playingRef.current && Math.abs(energy - target) < 0.01) {
+      if (!playingRef.current && Math.abs(energy - target) < 0.02) {
         running = false;
         return;
       }

@@ -8,6 +8,7 @@ import {
   Heart,
   Download,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 import { useFavoritesStore } from '../stores/favorites';
 import { useTrackActions } from '../hooks/useTrackActions';
@@ -124,6 +125,9 @@ const TrackMenu = ({ track, onDelete }) => {
               label={fav ? 'Hapus dari Favorit' : 'Tambah ke Favorit'}
               onClick={run(() => actions.toggleLike(track))}
             />
+            {isUpload && (
+              <Item icon={Pencil} label="Edit lagu" onClick={run(() => actions.openEditTrack(track))} />
+            )}
             {isUpload && (
               <Item icon={Download} label="Unduh lagu" onClick={run(() => actions.download(track))} />
             )}

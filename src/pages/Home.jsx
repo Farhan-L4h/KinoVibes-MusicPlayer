@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Upload, Mic2, ArrowRight, Heart, ListMusic, Library as LibraryIcon } from 'lucide-react';
+import { Search, Upload, Mic2, ArrowRight, Heart, ListMusic, Library as LibraryIcon, Tv, Music } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
 import { useMusicStore, getRecentTracks } from '../stores/music';
 import { usePlaylistStore } from '../stores/playlist';
@@ -34,6 +34,8 @@ const Home = () => {
   const user = useAuthStore((s) => s.user);
   const currentTrack = useMusicStore((s) => s.currentTrack);
   const nowPlayingOpen = useMusicStore((s) => s.nowPlayingOpen);
+  const playerMode = useMusicStore((s) => s.playerMode);
+  const setPlayerMode = useMusicStore((s) => s.setPlayerMode);
   const deckRef = useRef(null);
   const { playlists, loading: playlistsLoading, error: playlistsError, loadUserPlaylists } = usePlaylistStore();
   const favorites = useFavoritesStore((s) => s.tracks);
@@ -78,10 +80,15 @@ const Home = () => {
 
   useEffect(() => {
     if (currentTrack?.source !== 'youtube' || nowPlayingOpen) return undefined;
-    const el = deckRef.current;
-    registerVideoSlot(el, 2);
-    return () => unregisterVideoSlot(el);
-  }, [currentTrack?.source, currentTrack?.id, nowPlayingOpen]);
+    if (playerMode === 'video') {
+      const el = deckRef.current;
+      registerVideoSlot(el, 2);
+      return () => unregisterVideoSlot(el);
+    }
+    // music mode: unregister if previously registered
+    unregisterVideoSlot(deckRef.current);
+    return undefined;
+  }, [currentTrack?.source, currentTrack?.id, nowPlayingOpen, playerMode]);
   const frequent = useMemo(() => topPlayed.slice(0, 8), [topPlayed]);
   const recommendations = useMemo(() => {
     if (!topPlayed.length) return [];
@@ -122,7 +129,41 @@ const Home = () => {
           </div>
           <div className="relative isolate -m-3 overflow-hidden rounded-kv-lg p-3" inert={!currentTrack} aria-hidden={!currentTrack}>
             <Ambient url={currentTrack?.albumArt} opacity={0.4} />
-            <div ref={deckRef} className="relative z-10"><Turntable track={currentTrack} /></div>
+            {/* Video mode: 16:9 slot for YT iframe */}
+            {playerMode === 'video' && currentTrack?.source === 'youtube' ? (
+              <div
+                ref={deckRef}
+                className="relative z-10 w-full overflow-hidden rounded-kv-lg bg-black shadow-kv-lg ring-1 ring-kv-line/60"
+                style={{ aspectRatio: '16/9' }}
+              />
+            ) : (
+              <div ref={deckRef} className="relative z-10"><Turntable track={currentTrack} /></div>
+            )}
+            {/* Toggle mode: Musik (Turntable) vs Video — only for YouTube tracks */}
+            {currentTrack?.source === 'youtube' && (
+              <div className="absolute right-4 top-4 z-20 flex items-center rounded-full border border-kv-line bg-kv-panel/90 p-0.5 shadow-sm backdrop-blur-sm">
+                <button
+                  type="button"
+                  onClick={() => setPlayerMode('music')}
+                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+                    playerMode === 'music' ? 'bg-kv-ink text-kv-panel font-bold shadow-sm' : 'text-kv-ink-muted hover:text-kv-ink'
+                  }`}
+                >
+                  <Music size={11} aria-hidden="true" />
+                  <span>Musik</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlayerMode('video')}
+                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+                    playerMode === 'video' ? 'bg-kv-ink text-kv-panel font-bold shadow-sm' : 'text-kv-ink-muted hover:text-kv-ink'
+                  }`}
+                >
+                  <Tv size={11} aria-hidden="true" />
+                  <span>Video</span>
+                </button>
+              </div>
+            )}
           </div>
           {currentTrack ? (
             <div className="mt-4 sm:mt-6">

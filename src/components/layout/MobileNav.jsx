@@ -12,7 +12,11 @@ const ITEMS = [
 
 const MobileNav = () => (
   <nav
-    className="flex h-kv-bottomnav shrink-0 items-stretch border-t border-kv-line bg-kv-panel lg:hidden"
+    className="flex shrink-0 items-stretch border-t border-kv-line bg-kv-panel lg:hidden"
+    style={{
+      minHeight: 'calc(var(--kv-bottomnav-h) + env(safe-area-inset-bottom, 0px))',
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+    }}
     aria-label="Navigasi bawah"
   >
     {ITEMS.map(({ to, label, icon: Icon, end }) => (

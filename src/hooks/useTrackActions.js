@@ -11,6 +11,7 @@ export const useTrackActions = () => {
   const addToQueue = useMusicStore((s) => s.addToQueue);
   const playNext = useMusicStore((s) => s.playNext);
   const openAddToPlaylist = useModalStore((s) => s.openAddToPlaylist);
+  const openEditTrack = useModalStore((s) => s.openEditTrack);
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
 
   const play = (track, list) => {
@@ -74,6 +75,7 @@ export const useTrackActions = () => {
     addToQueue,
     playNext,
     openAddToPlaylist,
+    openEditTrack,
     download,
     remove,
   };

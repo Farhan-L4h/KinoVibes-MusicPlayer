@@ -104,6 +104,17 @@ const Library = () => {
   }, [user?.id]);
 
   useEffect(() => {
+    const onTrackUpdated = (e) => {
+      const updated = e.detail;
+      if (!updated?.id) return;
+      setTracks((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
+      setAlbumTracks((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
+    };
+    window.addEventListener('kv-track-updated', onTrackUpdated);
+    return () => window.removeEventListener('kv-track-updated', onTrackUpdated);
+  }, []);
+
+  useEffect(() => {
     if (!albumName || !user) {
       setAlbumTracks([]);
       return;

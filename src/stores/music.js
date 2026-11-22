@@ -36,6 +36,8 @@ const RETRY_DELAYS = [1000, 2000, 4000];
 const AUDIO_TIMEOUT = 20_000;
 
 const cancelAudioWork = () => {
+  // Increment BEFORE clearing timers so any in-flight timeout/retry callbacks
+  // that read audioAttempt will see the new value and self-cancel.
   audioAttempt++;
   clearTimeout(retryTimer);
   clearTimeout(loadTimer);
@@ -168,7 +170,12 @@ const loadAudio = async (set, get, playback) => {
     loadTimer = setTimeout(() => fail(new DOMException('Koneksi audio terlalu lambat. Coba lagi.', 'TimeoutError'), true), AUDIO_TIMEOUT);
   };
   const playing = () => {
-    if (!valid()) return;
+    // Guard: ignore callbacks from a stale load (track changed or cancelled).
+    if (!valid()) {
+      instance?.pause();
+      return;
+    }
+    // User pressed pause while audio was still loading — honour it immediately.
     if (!get().isPlaying) {
       instance?.pause();
       return;
@@ -224,6 +231,8 @@ const loadAudio = async (set, get, playback) => {
         bindNativeAudioEvents(instance, buffering, playing);
       },
       onloaderror: (_id, code) => {
+        // Guard: if track changed while this howl was loading, ignore the error.
+        if (!valid()) return;
         // Browsers may report an expired signed URL as SRC_NOT_SUPPORTED (4).
         const renewSignedUrl = Number(code) === 4 && track.audioPath && playback.retries === 0;
         fail(new Error('Gagal memuat audio. Coba putar lagi.'), Number(code) === 2 || renewSignedUrl);
@@ -266,6 +275,7 @@ const useMusicStore = create((set, get) => ({
   shuffle: !!savedPrefs.shuffle,
   repeat: savedPrefs.repeat || 'off',
   autoplay: savedPrefs.autoplay !== false,
+  playerMode: savedPrefs.playerMode || 'music', // 'music' | 'video'
   error: null,
   lyrics: null,
   currentLyricIndex: -1,
@@ -300,6 +310,10 @@ const useMusicStore = create((set, get) => ({
       currentTrack: track,
       playlist,
       currentIndex,
+      // isPlaying is set optimistically here. If the user presses pause before
+      // the audio player fires its first `playing` callback, that callback will
+      // detect isPlaying === false and call instance.pause() to honour the user
+      // intent without letting audio bleed through.
       isPlaying: true,
       status: 'loading',
       currentTime: 0,
@@ -350,9 +364,10 @@ const useMusicStore = create((set, get) => ({
       return get()._startSpotify(currentTrack, currentTime * 1000);
     }
     if (howl?.state() === 'loaded' && (status !== 'error' || audioPlayback?.playBlocked)) {
-      audioPlayback.retries = 0;
-      if (audioPlayback.playBlocked) howl.seek(currentTime);
-      audioPlayback.playBlocked = false;
+      // null-guard: audioPlayback may be null if playTrack was cancelled mid-flight
+      if (audioPlayback) audioPlayback.retries = 0;
+      if (audioPlayback?.playBlocked) howl.seek(currentTime);
+      if (audioPlayback) audioPlayback.playBlocked = false;
       howl.play();
     } else {
       cancelAudioWork();
@@ -497,6 +512,11 @@ const useMusicStore = create((set, get) => ({
     get()._persistPrefs();
   },
 
+  setPlayerMode: (mode) => {
+    set({ playerMode: mode });
+    get()._persistPrefs();
+  },
+
   addToQueue: (track) => {
     if (!track) return;
     if (get().queue.some((t) => t.id === track.id)) {
@@ -628,6 +648,8 @@ const useMusicStore = create((set, get) => ({
     },
     onPaused: () => {
       if (get().currentTrack?.source !== 'youtube') return;
+      // Guard: do not pause if a new track is currently loading
+      if (get().status === 'loading') return;
       set({ isPlaying: false, status: 'paused' });
       stopPolling();
       get()._persistSession();
@@ -653,17 +675,22 @@ const useMusicStore = create((set, get) => ({
       if (get().currentTrack?.source !== 'youtube') return;
       const token = playToken;
       console.error('YouTube player error:', code);
-      if (code === 101 || code === 150) {
-        toast.error('Video ini tidak bisa diputar di sini. Lewati ke lagu berikutnya.');
-      } else {
-        toast.error('Pemutar YouTube bermasalah. Lewati ke lagu berikutnya.');
-      }
+      // Update UI immediately so the user sees error state right away.
       set({ isPlaying: false, status: 'error', error: `YouTube error ${code}` });
       stopPolling();
       if (code === 'API_LOAD') return;
-      setTimeout(() => {
-        if (token === playToken && get().status === 'error') get().nextTrack(true);
-      }, 1200);
+      if (code === 101 || code === 150 || code === 100 || code === 2) {
+        // Restricted or invalid video (101/150: embedding disabled, 100: not found/removed, 2: bad videoId)
+        toast.error('Video ini tidak bisa diputar di sini. Lewati ke lagu berikutnya.');
+        setTimeout(() => {
+          if (token === playToken && get().status === 'error') get().nextTrack(true);
+        }, 800);
+      } else {
+        toast.error('Pemutar YouTube bermasalah. Lewati ke lagu berikutnya.');
+        setTimeout(() => {
+          if (token === playToken && get().status === 'error') get().nextTrack(true);
+        }, 1200);
+      }
     },
   },
 
@@ -777,9 +804,12 @@ const useMusicStore = create((set, get) => ({
 
   _startPolling: () => {
     stopPolling();
+    // 500 ms is sufficient for waveform and lyrics sync and is kinder on
+    // battery / CPU than the previous 250 ms tick.
     pollTimer = setInterval(() => {
-      const { currentTrack, isPlaying } = get();
-      if (!currentTrack || !isPlaying) return;
+      const { currentTrack, isPlaying, status } = get();
+      // Stop polling aggressively when paused or no track is active.
+      if (!currentTrack || !isPlaying || status === 'paused') return;
       let t = 0;
       if (currentTrack.source === 'youtube') {
         t = ytPlayer.getTime() || 0;
@@ -812,7 +842,7 @@ const useMusicStore = create((set, get) => ({
         lastPositionSync = now;
         updateMediaPosition(t, get().duration);
       }
-    }, 250);
+    }, 500);
   },
 
   _syncLyricIndex: (t) => {
@@ -824,8 +854,8 @@ const useMusicStore = create((set, get) => ({
   },
 
   _persistPrefs: () => {
-    const { volume, muted, shuffle, repeat, autoplay } = get();
-    saveJson(PREFS_KEY, { volume, muted, shuffle, repeat, autoplay });
+    const { volume, muted, shuffle, repeat, autoplay, playerMode } = get();
+    saveJson(PREFS_KEY, { volume, muted, shuffle, repeat, autoplay, playerMode });
   },
 
   _persistSession: () => {

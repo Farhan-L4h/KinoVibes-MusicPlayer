@@ -12,6 +12,7 @@ import MiniPlayer from '../player/MiniPlayer';
 const NowPlaying = lazy(() => import('../player/NowPlaying'));
 import VideoDock from '../player/VideoDock';
 import AddToPlaylistModal from '../AddToPlaylistModal';
+import EditTrackModal from '../EditTrackModal';
 import PageTransition from '../PageTransition';
 import Toaster from '../ui/Toaster';
 import GlobalAmbient from '../GlobalAmbient';
@@ -50,6 +51,7 @@ const Layout = () => {
       {nowPlayingOpen && <Suspense fallback={<div role="status" className="fixed inset-x-4 bottom-24 z-50 rounded-kv bg-kv-surface p-4">Memuat pemutar…</div>}><NowPlaying /></Suspense>}
       <VideoDock />
       <AddToPlaylistModal />
+      <EditTrackModal />
       <Toaster />
     </div>
   );

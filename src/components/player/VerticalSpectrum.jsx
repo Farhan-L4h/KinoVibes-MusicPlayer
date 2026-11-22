@@ -48,13 +48,15 @@ export default function VerticalSpectrum({ className = '' }) {
     };
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const isMobile = window.innerWidth < 768;
+      const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
       canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
       canvas.height = Math.max(1, Math.round(canvas.clientHeight * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
     const draw = (t) => {
+      if (document.hidden) return; // skip frame when tab is in background
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       if (!w || !h) return;
@@ -104,7 +106,7 @@ export default function VerticalSpectrum({ className = '' }) {
       const target = playingRef.current ? 1 : 0.16;
       energy += (target - energy) * 0.08;
       draw(t);
-      if (!playingRef.current && Math.abs(energy - target) < 0.01) {
+      if (!playingRef.current && Math.abs(energy - target) < 0.02) {
         running = false;
         return;
       }
