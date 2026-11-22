@@ -389,7 +389,7 @@ const Search = () => {
 
       {state === 'error' && (
         <EmptyState
-          icon={Youtube}
+          icon={src === 'spotify' ? AudioLines : Youtube}
           title="Pencarian gagal"
           description={error}
           action={<Button size="sm" onClick={() => { runSearch(input); setRetry((n) => n + 1); }}>Coba lagi</Button>}

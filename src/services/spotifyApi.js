@@ -221,7 +221,13 @@ export const searchSpotify = async (query, limit = 20, { signal } = {}) => {
     headers: { Authorization: `Bearer ${token}` },
     signal,
   });
-  if (!res.ok) throw new Error('Pencarian Spotify gagal.');
+  if (!res.ok) {
+    const errData = await res.json().catch(() => null);
+    if (res.status === 403) {
+      throw new Error('Spotify error 403: Akun Spotify Anda perlu didaftarkan di "Users and Access" pada Spotify Developer Dashboard.');
+    }
+    throw new Error(errData?.error?.message || `Pencarian Spotify gagal (${res.status}).`);
+  }
   const data = await res.json();
   return (data.tracks?.items || []).filter(Boolean).map(spotifyItemToTrack);
 };
