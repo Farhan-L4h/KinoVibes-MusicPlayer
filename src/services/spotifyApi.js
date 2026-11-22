@@ -179,9 +179,12 @@ export const spotifyFetch = async (path, { method = 'GET', body, retried = false
   if (res.status === 204 || res.status === 202) return null;
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    const message = data?.error?.message || `Spotify error ${res.status}`;
-    if (res.status === 403 && /premium/i.test(message)) {
-      throw new Error('Fitur ini butuh Spotify Premium.');
+    let message = data?.error?.message || `Spotify error ${res.status}`;
+    if (res.status === 403) {
+      if (/premium/i.test(message)) {
+        throw new Error('Fitur ini butuh Spotify Premium.');
+      }
+      message = 'Spotify error 403: Email Spotify Anda perlu didaftarkan di "Users and Access" pada dashboard Spotify Developer.';
     }
     throw new Error(message);
   }
@@ -283,46 +286,65 @@ export const importSpotifyLibrary = async (userId, { includePlaylists = true, on
   const report = { tracks: 0, playlists: 0, skipped: 0 };
   let offset = 0;
   const imported = new Map();
-  for (;;) {
-    const page = await savedTracksPage(offset);
-    const items = (page?.items || []).map((r) => r?.track).filter((t) => t?.id);
-    for (const item of items) {
-      const track = spotifyItemToTrack(item);
-      const row = await ensureSpotifyTrack(track, userId);
-      imported.set(track.spotifyId, row.id);
-      report.tracks += 1;
-      onProgress?.(`Mengimpor lagu… ${report.tracks}`);
-    }
-    if (!page?.next || items.length === 0 || report.tracks >= 500) break;
-    offset += 50;
-  }
+  let trackError = null;
 
-  if (includePlaylists) {
-    const existing = await getUserPlaylists(userId);
-    const existingNames = new Set(existing.map((p) => p.name.toLowerCase()));
-    const lists = await getSpotifyPlaylists();
-    for (const list of lists) {
-      if (!list?.id || existingNames.has((list.name || '').toLowerCase())) {
-        report.skipped += 1;
-        continue;
-      }
-      onProgress?.(`Mengimpor playlist "${list.name}"…`);
-      const items = await getSpotifyPlaylistTracks(list.id, 100);
-      if (!items.length) continue;
-      const created = await createPlaylist(userId, {
-        name: list.name,
-        description: list.description ? String(list.description).replace(/<[^>]*>/g, '').slice(0, 200) : 'Diimpor dari Spotify',
-        coverImage: list.images?.[0]?.url || null,
-      });
+  try {
+    for (;;) {
+      const page = await savedTracksPage(offset);
+      const items = (page?.items || []).map((r) => r?.track).filter((t) => t?.id);
       for (const item of items) {
         const track = spotifyItemToTrack(item);
-        const row = imported.get(track.spotifyId) || (await ensureSpotifyTrack(track, userId));
+        const row = await ensureSpotifyTrack(track, userId);
         imported.set(track.spotifyId, row.id);
-        await addTrackToPlaylist(created.id, row.id).catch(() => {});
+        report.tracks += 1;
+        onProgress?.(`Mengimpor lagu… ${report.tracks}`);
       }
-      report.playlists += 1;
+      if (!page?.next || items.length === 0 || report.tracks >= 500) break;
+      offset += 50;
+    }
+  } catch (err) {
+    trackError = err;
+    console.warn('Gagal membaca lagu tersimpan Spotify:', err);
+  }
+
+  let playlistError = null;
+  if (includePlaylists) {
+    try {
+      const existing = await getUserPlaylists(userId);
+      const existingNames = new Set(existing.map((p) => p.name.toLowerCase()));
+      const lists = await getSpotifyPlaylists();
+      for (const list of lists) {
+        if (!list?.id || existingNames.has((list.name || '').toLowerCase())) {
+          report.skipped += 1;
+          continue;
+        }
+        onProgress?.(`Mengimpor playlist "${list.name}"…`);
+        const items = await getSpotifyPlaylistTracks(list.id, 100);
+        if (!items.length) continue;
+        const created = await createPlaylist(userId, {
+          name: list.name,
+          description: list.description ? String(list.description).replace(/<[^>]*>/g, '').slice(0, 200) : 'Diimpor dari Spotify',
+          coverImage: list.images?.[0]?.url || null,
+        });
+        for (const item of items) {
+          const track = spotifyItemToTrack(item);
+          const row = imported.get(track.spotifyId) || (await ensureSpotifyTrack(track, userId));
+          imported.set(track.spotifyId, row.id);
+          await addTrackToPlaylist(created.id, row.id).catch(() => {});
+        }
+        report.playlists += 1;
+      }
+    } catch (err) {
+      playlistError = err;
+      console.warn('Gagal membaca playlist Spotify:', err);
     }
   }
+
+  if (report.tracks === 0 && report.playlists === 0) {
+    if (trackError) throw trackError;
+    if (playlistError) throw playlistError;
+  }
+
   return report;
 };
 
