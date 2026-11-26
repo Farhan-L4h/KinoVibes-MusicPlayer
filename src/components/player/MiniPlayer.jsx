@@ -1,6 +1,7 @@
 import { Mic2, ListMusic, Maximize2 } from 'lucide-react';
 import TrackArt from '../TrackArt';
 import { useMusicStore } from '../../stores/music';
+import { useSettingsStore } from '../../stores/settings';
 import IconButton from '../ui/IconButton';
 import Ambient from '../Ambient';
 import Transport from './Transport';
@@ -10,6 +11,7 @@ import Visualizer from './Visualizer';
 export default function MiniPlayer() {
   const track = useMusicStore((s) => s.currentTrack);
   const setNowPlayingOpen = useMusicStore((s) => s.setNowPlayingOpen);
+  const compact = useSettingsStore((s) => s.compactPlayer);
   if (!track) return null;
   return (
     <section
@@ -19,10 +21,10 @@ export default function MiniPlayer() {
     >
       {/* Swipe-up hint indicator */}
       <div aria-hidden="true" className="absolute left-1/2 top-1.5 h-1 w-8 -translate-x-1/2 rounded-full bg-kv-ink/20 sm:hidden" />
-      <div className="pointer-events-none absolute inset-0 z-0 opacity-50"><Visualizer /></div>
+      {!compact && <div className="pointer-events-none absolute inset-0 z-0 opacity-50"><Visualizer /></div>}
       <div className="relative z-10">
         <SeekSlider />
-        <div className="flex min-h-[56px] items-center gap-2 pb-1.5 sm:min-h-[60px] sm:gap-4">
+        <div className={compact ? 'flex min-h-[48px] items-center gap-2 pb-1 sm:gap-3' : 'flex min-h-[56px] items-center gap-2 pb-1.5 sm:min-h-[60px] sm:gap-4'}>
           <button type="button" onClick={() => setNowPlayingOpen(true)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left sm:gap-3" aria-label="Buka tampilan sedang diputar">
             <span key={track.id} className="kv-fade relative isolate h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-kv-muted sm:h-11 sm:w-11">
               <Ambient url={track.albumArt} opacity={0.55} />

@@ -331,6 +331,13 @@ async function musicHarness(resolve = async () => 'audio.mp3') {
     '../player/mediaSession': { updateMediaMetadata() {}, updateMediaPosition() {}, clearMediaSession() {}, bindMediaActions: (actions) => { mediaActions = actions; } },
     '../services/lyricsApi': { getLyricsOffset: () => 0 }, '../lib/lrc': { findActiveLine: () => -1 },
     './toast': { toast: { error() {}, info() {}, success() {} } },
+    '../lib/utils': { sameArtist: (a, b) => a === b },
+    './settings': { getSettings: () => ({
+      autoPlayOnSelect: true, smartRecommendations: true, mediaSessionEnabled: true,
+      trackChangeToast: false, toastDurationMs: 3000, rememberVolume: true,
+      crossfadeEnabled: false, crossfadeSeconds: 5, lyricsOffsetMs: 0,
+      resumeSession: true, rememberPosition: true, lyricsAutoScroll: true,
+    }) },
   }, { localStorage: {
     getItem: (key) => data.get(key) || null,
     setItem: (key, value) => { data.set(key, value); writes.push({ key, value: JSON.parse(value), at: time.now() }); },

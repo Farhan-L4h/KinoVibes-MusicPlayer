@@ -5,6 +5,7 @@ import { useMusicStore } from '../../stores/music';
 import { useFavoritesStore } from '../../stores/favorites';
 import { usePlaylistStore } from '../../stores/playlist';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { useSettingsEffects } from '../../hooks/useSettingsEffects';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import MobileNav from './MobileNav';
@@ -21,6 +22,7 @@ const Layout = () => {
   const user = useAuthStore((s) => s.user);
   const nowPlayingOpen = useMusicStore((s) => s.nowPlayingOpen);
   useKeyboardShortcuts();
+  useSettingsEffects();
 
   useEffect(() => {
     useMusicStore.getState().restoreSession();

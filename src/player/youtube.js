@@ -45,6 +45,8 @@ export const ytPlayer = {
   _mountToken: 0,
   _wantPlay: false,
   _ready: false,
+  _quality: 'auto',
+  _qualityApplied: false,
 
   async mount(elementId, videoId, hooks) {
     const token = ++this._mountToken;
@@ -81,6 +83,8 @@ export const ytPlayer = {
           if (this.player !== e.target) return;
           this._ready = true;
           e.target.setVolume(this._pendingVolume);
+          this._qualityApplied = false;
+          this._applyQuality();
           this._loadVideo();
           this.hooks.onDuration?.(e.target.getDuration?.() || 0);
         },
@@ -93,6 +97,7 @@ export const ytPlayer = {
               return;
             }
             this.hooks.onDuration?.(e.target.getDuration?.() || 0);
+            this._applyQuality();
             this.hooks.onPlaying?.();
           } else if (e.data === S.PAUSED) this.hooks.onPaused?.();
           else if (e.data === S.ENDED) this.hooks.onEnded?.();
@@ -119,8 +124,40 @@ export const ytPlayer = {
     return !id || id === this.videoId;
   },
   _loadVideo() {
+    this._qualityApplied = false;
     if (this._shouldPlay()) this.player.loadVideoById(this.videoId);
     else this.player.cueVideoById(this.videoId);
+  },
+  // The IFrame API treats quality as a suggestion; the actual level is read
+  // back with getPlaybackQuality() so Settings never claims a fake resolution.
+  _applyQuality() {
+    if (!this._ready || !this.player || this._qualityApplied) return;
+    const map = {
+      auto: 'default',
+      medium: 'medium',
+      large: 'large',
+      hd720: 'hd720',
+      hd1080: 'hd1080',
+      highres: 'highres',
+    };
+    try {
+      this.player.setPlaybackQuality?.(map[this._quality] || 'default');
+      this._qualityApplied = true;
+    } catch {
+      /* deprecated/unsupported in some embeds */
+    }
+  },
+  setQuality(quality) {
+    this._quality = quality || 'auto';
+    this._qualityApplied = false;
+    this._applyQuality();
+  },
+  getActualQuality() {
+    try {
+      return this.player?.getPlaybackQuality?.() || null;
+    } catch {
+      return null;
+    }
   },
   isReady() {
     return this._ready;
@@ -150,6 +187,7 @@ export const ytPlayer = {
     this._mountToken++;
     this._wantPlay = false;
     this._ready = false;
+    this._qualityApplied = false;
     this.hooks = {};
     try {
       this.player?.destroy?.();

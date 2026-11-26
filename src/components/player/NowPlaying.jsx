@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { ChevronDown, Heart, ListPlus, Download, Tv, Music } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { useNavigate } from 'react-router-dom';
+import { cn, normalizeArtist } from '../../lib/utils';
 import TrackArt from '../TrackArt';
 import { useMusicStore } from '../../stores/music';
+import { useSettingsStore } from '../../stores/settings';
 import { useFavoritesStore } from '../../stores/favorites';
 import { useTrackActions } from '../../hooks/useTrackActions';
 import { registerVideoSlot, unregisterVideoSlot } from '../../player/videoSlot';
@@ -15,10 +17,14 @@ import Transport from './Transport';
 import Visualizer from './Visualizer';
 
 export default function NowPlaying() {
+  const navigate = useNavigate();
   const open = useMusicStore((s) => s.nowPlayingOpen);
   const track = useMusicStore((s) => s.currentTrack);
   const tab = useMusicStore((s) => s.nowPlayingTab);
   const playerMode = useMusicStore((s) => s.playerMode);
+  const playing = useMusicStore((s) => s.isPlaying);
+  const animatedArtwork = useSettingsStore((s) => s.animatedArtwork);
+  const reduceMotion = useSettingsStore((s) => s.reduceMotion);
   const setPlayerMode = useMusicStore((s) => s.setPlayerMode);
   const isFavorite = useFavoritesStore((s) => s.isFavorite);
   const actions = useTrackActions();
@@ -27,6 +33,10 @@ export default function NowPlaying() {
   const touchStartY = useRef(null);
   const isYt = track?.source === 'youtube';
   const { setNowPlayingOpen, setNowPlayingTab } = useMusicStore.getState();
+
+  const goArtist = () => {
+    if (track?.artist) navigate(`/artist/${normalizeArtist(track.artist)}`);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -148,7 +158,9 @@ export default function NowPlaying() {
                   />
                   <div ref={slot} key={`art-${track.id}`} className="kv-fade relative aspect-square w-full overflow-hidden rounded-kv-lg bg-kv-muted shadow-kv-lg ring-1 ring-kv-line/60 lg:aspect-auto lg:h-full">
                     {(!isYt || playerMode === 'music') && (
-                      <TrackArt src={track.albumArt} videoId={track.videoId} alt={`Sampul ${track.title}`} placeholderClassName="absolute inset-0 flex items-center justify-center text-kv-ink-muted" placeholderSize={80} />
+                      <div className={cn('h-full w-full', animatedArtwork && playing && !reduceMotion && 'kv-art-motion')}>
+                        <TrackArt src={track.albumArt} videoId={track.videoId} alt={`Sampul ${track.title}`} placeholderClassName="absolute inset-0 flex items-center justify-center text-kv-ink-muted" placeholderSize={80} />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -157,7 +169,14 @@ export default function NowPlaying() {
             <div className="h-12 sm:h-24 lg:h-16 lg:shrink-0 [@media(max-height:760px)]:lg:h-10 [@media(max-height:660px)]:lg:hidden"><Visualizer /></div>
             <div key={`meta-${track.id}`} className="kv-fade space-y-1.5 sm:space-y-2 lg:shrink-0 lg:space-y-3">
               <h1 className="break-words font-display text-xl leading-tight tracking-tight sm:text-3xl [@media(max-height:760px)]:lg:text-2xl">{track.title}</h1>
-              <p className="text-sm font-semibold text-kv-ink-muted sm:text-base">{track.artist}</p>
+              <button
+                type="button"
+                onClick={goArtist}
+                className="text-sm font-semibold text-kv-ink-muted sm:text-base hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-kv-ink"
+                aria-label={`Lihat artis ${track.artist}`}
+              >
+                {track.artist}
+              </button>
               {track.album && <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-kv-ink-muted/80">{track.album}</p>}
             </div>
             <div className="lg:shrink-0"><Transport waveform /></div>

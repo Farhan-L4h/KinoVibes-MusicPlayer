@@ -3,6 +3,7 @@ import { Mic2, RefreshCw, Pencil, Minus, Plus, Loader2, RotateCcw } from 'lucide
 import { useMusicStore } from '../stores/music';
 import { useAuthStore } from '../stores/auth';
 import { fetchLyrics, getLyricsOffset, setLyricsOffset } from '../services/lyricsApi';
+import { useSettingsStore } from '../stores/settings';
 import Ambient from './Ambient';
 import Badge from './ui/Badge';
 import EmptyState from './ui/EmptyState';
@@ -14,7 +15,10 @@ const LyricsView = ({ compact = false }) => {
   const track = useMusicStore((s) => s.currentTrack);
   const lyrics = useMusicStore((s) => s.lyrics);
   const activeIndex = useMusicStore((s) => s.currentLyricIndex);
+  const currentTime = useMusicStore((s) => s.currentTime);
   const user = useAuthStore((s) => s.user);
+  const globalOffset = useSettingsStore((s) => s.lyricsOffsetMs);
+  const autoScrollPref = useSettingsStore((s) => s.lyricsAutoScroll);
   const [state, setState] = useState('idle');
   const [editing, setEditing] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -22,7 +26,7 @@ const LyricsView = ({ compact = false }) => {
   const lineRefs = useRef([]);
   const manualScrollAt = useRef(0);
   const requestId = useRef(0);
-  const [follow, setFollow] = useState(true);
+  const [follow, setFollow] = useState(autoScrollPref);
 
   const load = useCallback(
     async (force = false) => {
@@ -46,7 +50,7 @@ const LyricsView = ({ compact = false }) => {
       setState('idle');
       return;
     }
-    setFollow(true);
+    setFollow(useSettingsStore.getState().lyricsAutoScroll);
     manualScrollAt.current = 0;
     setOffset(getLyricsOffset(track.id));
     const cached = useMusicStore.getState().lyrics;
@@ -79,7 +83,7 @@ const LyricsView = ({ compact = false }) => {
   };
 
   const jumpTo = (line) => {
-    const total = offset + (lyrics?.baseOffsetMs || 0);
+    const total = offset + (lyrics?.baseOffsetMs || 0) + globalOffset;
     useMusicStore.getState().seekTo(Math.max(0, (line.timeMs - total) / 1000));
     manualScrollAt.current = 0;
     setFollow(true);
@@ -95,7 +99,7 @@ const LyricsView = ({ compact = false }) => {
     );
   }
 
-  const totalOffsetMs = offset + (lyrics?.baseOffsetMs || 0);
+  const totalOffsetMs = offset + (lyrics?.baseOffsetMs || 0) + globalOffset;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-1.5">
@@ -232,7 +236,19 @@ const LyricsView = ({ compact = false }) => {
                   data-band={band}
                   aria-current={active ? 'true' : undefined}
                 >
-                  {line.text}
+                  {line.words?.length ? (
+                    line.words.map((word, wi) => (
+                      <span
+                        key={`${word.timeMs}-${wi}`}
+                        className="kv-lyric-word"
+                        data-sung={passed || (active && word.timeMs <= currentTime * 1000 + totalOffsetMs) ? 'true' : 'false'}
+                      >
+                        {word.text}{' '}
+                      </span>
+                    ))
+                  ) : (
+                    line.text
+                  )}
                 </button>
               );
             })}

@@ -424,22 +424,48 @@
     font-weight: 650;
     letter-spacing: -0.015em;
     line-height: 1.22;
-    font-size: clamp(1.15rem, min(2.4vw, 3.6vh), 2.05rem);
+    font-size: calc(clamp(1.15rem, min(2.4vw, 3.6vh), 2.05rem) * var(--kv-lyric-scale, 1));
     padding: 0.42em 0.6em;
     border-radius: 14px;
     color: var(--kv-lyric-ink);
     opacity: 0.5;
-    filter: blur(1.4px);
+    filter: blur(var(--kv-lyric-blur, 1.4px));
     transform-origin: left center;
     text-shadow: 0 1px 14px rgb(0 0 0 / 0.4);
     transition:
-      opacity 560ms cubic-bezier(0.22, 1, 0.36, 1),
-      transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
-      filter 560ms cubic-bezier(0.22, 1, 0.36, 1),
-      text-shadow 560ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity var(--kv-lyric-duration, 560ms) cubic-bezier(0.22, 1, 0.36, 1),
+      transform var(--kv-lyric-duration, 560ms) cubic-bezier(0.22, 1, 0.36, 1),
+      filter var(--kv-lyric-duration, 560ms) cubic-bezier(0.22, 1, 0.36, 1),
+      text-shadow var(--kv-lyric-duration, 560ms) cubic-bezier(0.22, 1, 0.36, 1),
       background-color 200ms var(--kv-ease);
     cursor: pointer;
   }
+  .kv-lyrics-no-highlight .kv-lyric-line[data-active='true'] {
+    transform: none;
+    text-shadow: 0 1px 14px rgb(0 0 0 / 0.4);
+  }
+
+  /* Subtle idle float for the cover while music plays (Appearance setting). */
+  .kv-art-motion {
+    animation: kv-art-float 9s ease-in-out infinite;
+    will-change: transform;
+  }
+  @keyframes kv-art-float {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(0, -7px, 0) scale(1.012); }
+  }
+
+  /* User-controlled reduced motion, in addition to the OS media query. */
+  .kv-reduce-motion *,
+  .kv-reduce-motion *::before,
+  .kv-reduce-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .kv-reduce-motion .kv-mesh { animation: none !important; }
+  .kv-reduce-motion .kv-art-motion { animation: none !important; }
   .kv-lyric-line[data-band='mid'] {
     opacity: 0.62;
     filter: blur(0.9px);
@@ -462,6 +488,13 @@
     background: rgba(255, 255, 255, 0.08);
     opacity: 1;
     filter: blur(0);
+  }
+  .kv-lyric-word {
+    color: color-mix(in srgb, var(--kv-lyric-ink) 58%, transparent);
+    transition: color 180ms linear, opacity 180ms linear;
+  }
+  .kv-lyric-word[data-sung='true'] {
+    color: var(--kv-lyric-ink);
   }
 
   .kv-mesh {

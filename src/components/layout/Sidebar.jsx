@@ -1,5 +1,5 @@
 import { NavLink, Link } from 'react-router-dom';
-import { Home, Search, Music2, Heart, ListMusic, Mic2, UploadCloud, ShieldCheck } from 'lucide-react';
+import { Home, Search, Music2, Heart, ListMusic, Mic2, UploadCloud, ShieldCheck, Settings } from 'lucide-react';
 import { useAuthStore, selectIsAdmin } from '../../stores/auth';
 import { initials, cn } from '../../lib/utils';
 
@@ -47,11 +47,27 @@ const Sidebar = () => {
         </NavLink>
       ))}
 
+      <NavLink
+        to="/settings"
+        title="Pengaturan"
+        aria-label="Pengaturan"
+        className={({ isActive }) =>
+          cn(
+            'kv-press mt-auto flex h-11 w-11 items-center justify-center rounded-full',
+            isActive
+              ? 'bg-kv-ink text-kv-panel shadow-kv'
+              : 'text-kv-ink-muted hover:bg-kv-muted hover:text-kv-ink'
+          )
+        }
+      >
+        <Settings size={19} strokeWidth={2.2} />
+      </NavLink>
+
       <Link
         to="/profile"
         title="Profil"
         aria-label="Buka profil"
-        className="kv-press mt-auto flex h-11 w-11 items-center justify-center rounded-full border-[1.5px] border-kv-line-strong bg-kv-surface font-display text-xs text-kv-ink hover:bg-kv-muted"
+        className="kv-press flex h-11 w-11 items-center justify-center rounded-full border-[1.5px] border-kv-line-strong bg-kv-surface font-display text-xs text-kv-ink hover:bg-kv-muted"
       >
         {initials(displayName)}
       </Link>

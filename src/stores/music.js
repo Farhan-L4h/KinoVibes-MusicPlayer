@@ -9,8 +9,10 @@ import { isSpotifyConfigured, isSpotifyConnected, getSpotifyTrackPreview } from 
 import { updateMediaMetadata, updateMediaPosition, bindMediaActions, clearMediaSession } from '../player/mediaSession';
 import { getLyricsOffset } from '../services/lyricsApi';
 import { findActiveLine } from '../lib/lrc';
+import { sameArtist } from '../lib/utils';
 import { getRelatedYouTube, getRelatedByQuery } from '../services/ytApi';
 import { toast } from './toast';
+import { getSettings } from './settings';
 
 const SESSION_KEY = 'kv-session';
 const PREFS_KEY = 'kv-prefs';
@@ -32,6 +34,7 @@ let lastSessionSnapshot = null;
 let lastPersistedSecond = -1;
 let spotifyMode = null; // 'sdk' (Premium, full track) | 'preview' (30s via Howler)
 let lastSpotifyPos = 0;
+let xfade = null; // second Howl used to overlap the next upload during crossfade
 const RETRY_DELAYS = [1000, 2000, 4000];
 const AUDIO_TIMEOUT = 20_000;
 
@@ -63,6 +66,10 @@ const saveJson = (key, value) => {
 };
 
 const savedPrefs = loadJson(PREFS_KEY, {});
+if (!getSettings().rememberVolume) {
+  delete savedPrefs.volume;
+  delete savedPrefs.muted;
+}
 
 const stopHowl = () => {
   detachAudioEvents?.();
@@ -82,6 +89,33 @@ const stopPolling = () => {
   if (pollTimer) {
     clearInterval(pollTimer);
     pollTimer = null;
+  }
+};
+
+const isUploadTrack = (track) =>
+  !!track && track.source !== 'youtube' && track.source !== 'spotify' && !!(track.audioPath || track.audioUrl);
+
+// Crossfade is only real for Howler-backed uploads; the YouTube iframe and the
+// Spotify SDK expose no usable dual-deck volume ramp, so Settings states that.
+const cancelCrossfade = (restoreVolume = true) => {
+  if (!xfade) return;
+  const pending = xfade.howl;
+  xfade = null;
+  if (pending) {
+    try {
+      pending.stop();
+      pending.unload();
+    } catch {
+      /* already unloaded */
+    }
+  }
+  if (restoreVolume && howl?.state() === 'loaded') {
+    const { muted, volume } = useMusicStore.getState();
+    try {
+      howl.volume(muted ? 0 : volume);
+    } catch {
+      /* element gone */
+    }
   }
 };
 
@@ -221,6 +255,7 @@ const loadAudio = async (set, get, playback) => {
         clearTimeout(loadTimer);
         loadTimer = null;
         stopPolling();
+        if (get()._promoteCrossfade()) return;
         get()._handleEnded();
       },
       onload: () => {
@@ -289,6 +324,7 @@ const useMusicStore = create((set, get) => ({
     const prev = get().currentTrack;
 
     cancelAudioWork();
+    cancelCrossfade();
     audioPlayback = null;
     seekAfterLoad = null;
     stopHowl();
@@ -314,8 +350,8 @@ const useMusicStore = create((set, get) => ({
       // the audio player fires its first `playing` callback, that callback will
       // detect isPlaying === false and call instance.pause() to honour the user
       // intent without letting audio bleed through.
-      isPlaying: true,
-      status: 'loading',
+      isPlaying: getSettings().autoPlayOnSelect !== false,
+      status: getSettings().autoPlayOnSelect === false ? 'paused' : 'loading',
       currentTime: 0,
       duration: track.duration || 0,
       error: null,
@@ -324,13 +360,31 @@ const useMusicStore = create((set, get) => ({
       ytLoadNonce: get().ytLoadNonce + 1,
     });
 
-    updateMediaMetadata(track);
+    const settings = getSettings();
+    if (settings.mediaSessionEnabled) updateMediaMetadata(track);
     pushRecent(track);
     if (!/^(yt|sp):/.test(String(track.id))) {
       incrementPlayCount(track.id).catch(() => {});
     }
+    if (settings.trackChangeToast && prev?.id !== track.id) {
+      toast.info(`${track.title} — ${track.artist || 'Unknown Artist'}`, settings.toastDurationMs);
+    }
     get()._persistSession();
     void get()._prefetchRelated();
+
+    if (settings.autoPlayOnSelect === false) {
+      // Load the track into the player without starting audio; the first play()
+      // press then starts it from the beginning for the selected source.
+      if (track.source === 'youtube') {
+        markLive(false);
+        return;
+      }
+      if (track.source !== 'spotify') {
+        audioPlayback = { track, token, retries: 0 };
+        return loadAudio(set, get, audioPlayback);
+      }
+      return;
+    }
 
     if (track.source === 'youtube') {
       // VideoDock mounts the iframe; hooks below drive the state machine.
@@ -386,6 +440,7 @@ const useMusicStore = create((set, get) => ({
   pause: () => {
     const { currentTrack } = get();
     if (!currentTrack) return;
+    cancelCrossfade();
     set({ isPlaying: false, status: 'paused' });
     clearTimeout(retryTimer);
     clearTimeout(loadTimer);
@@ -467,6 +522,7 @@ const useMusicStore = create((set, get) => ({
   seekTo: (seconds) => {
     const { currentTrack, duration } = get();
     if (!currentTrack) return;
+    cancelCrossfade();
     const t = Math.max(0, duration ? Math.min(seconds, duration) : seconds);
     if (currentTrack.source === 'youtube') {
       if (ytPlayer.isReady()) ytPlayer.seek(t);
@@ -501,15 +557,30 @@ const useMusicStore = create((set, get) => ({
     get()._persistPrefs();
   },
 
+  setShuffle: (shuffle) => {
+    set({ shuffle: !!shuffle });
+    get()._persistPrefs();
+  },
+
   toggleShuffle: () => {
-    set({ shuffle: !get().shuffle });
+    get().setShuffle(!get().shuffle);
+  },
+
+  setRepeat: (repeat) => {
+    set({ repeat: ['off', 'all', 'one'].includes(repeat) ? repeat : 'off' });
     get()._persistPrefs();
   },
 
   cycleRepeat: () => {
     const order = { off: 'all', all: 'one', one: 'off' };
-    set({ repeat: order[get().repeat] || 'off' });
+    get().setRepeat(order[get().repeat] || 'off');
+  },
+
+  setAutoplay: (autoplay) => {
+    set({ autoplay: !!autoplay });
     get()._persistPrefs();
+    if (autoplay) void get()._prefetchRelated();
+    else set({ autoplayQueue: [] });
   },
 
   setPlayerMode: (mode) => {
@@ -547,11 +618,7 @@ const useMusicStore = create((set, get) => ({
   },
 
   toggleAutoplay: () => {
-    const autoplay = !get().autoplay;
-    set({ autoplay });
-    get()._persistPrefs();
-    if (autoplay) void get()._prefetchRelated();
-    else set({ autoplayQueue: [] });
+    get().setAutoplay(!get().autoplay);
   },
 
   removeFromAutoplay: (trackId) => {
@@ -592,22 +659,150 @@ const useMusicStore = create((set, get) => ({
       ...getRecentTracks().map((t) => t.id),
     ]);
     const seen = new Set();
-    const out = [];
+    const scored = [];
     for (const t of items) {
       if (!t?.id || exclude.has(t.id) || seen.has(t.id)) continue;
       seen.add(t.id);
-      out.push(t);
-      if (out.length >= 20) break;
+      // Related results start from YouTube's own relevance; same-artist and
+      // same-album lift the tracks that continue the current listening context.
+      let score = 25;
+      if (sameArtist(t.artist, currentTrack.artist)) score += 25;
+      if (t.album && currentTrack.album && t.album.toLowerCase() === currentTrack.album.toLowerCase()) score += 10;
+      scored.push({ track: t, score });
     }
-    return out;
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, 20).map((entry) => entry.track);
   },
 
   _prefetchRelated: async () => {
-    if (!get().autoplay || !get().currentTrack) return;
+    if (!get().autoplay || !getSettings().smartRecommendations || !get().currentTrack) return;
     const seed = get().currentTrack.id;
     const tracks = await get()._fetchRelated();
     if (!get().autoplay || get().currentTrack?.id !== seed) return;
     set({ autoplayQueue: tracks });
+  },
+
+  _promoteCrossfade: () => {
+    const pending = xfade;
+    if (!pending?.howl || pending.pending) return false;
+    xfade = null;
+    const { howl: nextHowl, track } = pending;
+    const { queue, playlist } = get();
+    const fromQueue = queue[0]?.id === track.id;
+    let nextPlaylist = playlist;
+    let nextIndex = playlist.findIndex((t) => t.id === track.id);
+    if (nextIndex < 0) {
+      nextPlaylist = [...playlist, track];
+      nextIndex = nextPlaylist.length - 1;
+    }
+    try {
+      howl?.stop();
+      howl?.unload();
+    } catch {
+      /* ended already */
+    }
+    nextHowl.__kvActive = true;
+    howl = nextHowl;
+    audioPlayback = pending.playback;
+    const buffering = () => {
+      if (get().isPlaying) set({ status: 'buffering' });
+    };
+    const playing = () => {
+      if (!get().isPlaying) {
+        nextHowl.pause();
+        return;
+      }
+      set({ status: 'playing', error: null });
+    };
+    bindNativeAudioEvents(nextHowl, buffering, playing);
+    const duration = nextHowl.duration();
+    set({
+      currentTrack: track,
+      playlist: nextPlaylist,
+      currentIndex: nextIndex,
+      queue: fromQueue ? queue.slice(1) : queue,
+      isPlaying: getSettings().autoPlayOnSelect !== false,
+      status: 'playing',
+      currentTime: 0,
+      duration: Number.isFinite(duration) && duration > 0 ? duration : track.duration || 0,
+      error: null,
+      lyrics: null,
+      currentLyricIndex: -1,
+      ytLoadNonce: get().ytLoadNonce + 1,
+    });
+    if (getSettings().mediaSessionEnabled) updateMediaMetadata(track);
+    pushRecent(track);
+    if (!/^(yt|sp):/.test(String(track.id))) incrementPlayCount(track.id).catch(() => {});
+    get()._startPolling();
+    get()._persistSession();
+    void get()._prefetchRelated();
+    return true;
+  },
+
+  _maybeCrossfade: (t) => {
+    const settings = getSettings();
+    if (!settings.crossfadeEnabled || settings.crossfadeSeconds <= 0) return;
+    if (xfade || !howl || howl.state() !== 'loaded') return;
+    const { currentTrack, duration, isPlaying, repeat } = get();
+    if (!isPlaying || !isUploadTrack(currentTrack) || !Number.isFinite(duration) || duration <= 0) return;
+    if (repeat === 'one') return;
+    const remaining = duration - t;
+    if (remaining <= 0.15 || remaining > settings.crossfadeSeconds) return;
+    void get()._startCrossfade(settings.crossfadeSeconds);
+  },
+
+  _startCrossfade: async (seconds) => {
+    if (xfade) return;
+    const { queue, playlist, currentIndex, repeat, currentTrack } = get();
+    let next = queue.length > 0 ? queue[0] : playlist[currentIndex + 1];
+    if (!next && repeat === 'all') next = playlist[0];
+    if (!next || next.id === currentTrack?.id || !isUploadTrack(next)) return;
+
+    const token = playToken;
+    xfade = { pending: true, track: next };
+    const abortIfStale = () => !xfade || xfade.track.id !== next.id || token !== playToken;
+    try {
+      const bucket = next.bucket || BUCKETS.MUSIC;
+      const url = next.audioPath
+        ? await getSignedUrl(bucket, next.audioPath)
+        : await resolveAudioUrl(next);
+      if (abortIfStale()) return;
+      if (!url) throw new Error('Audio tidak tersedia');
+      const corsMode = await probeCors(url);
+      if (abortIfStale() || !get().isPlaying) {
+        cancelCrossfade();
+        return;
+      }
+      const format = /\.([a-z0-9]+)$/i.test(url.split('?')[0]) ? undefined : ['mp3'];
+      const targetVolume = get().muted ? 0 : get().volume;
+      const playback = { track: next, token, retries: 0, crossfade: true };
+      const nextHowl = withCorsAudio(corsMode === 'cors', () => new Howl({
+        src: [url],
+        format,
+        html5: true,
+        volume: 0,
+        onend: () => {
+          if (nextHowl.__kvActive && get().isPlaying) {
+            stopPolling();
+            get()._handleEnded();
+          }
+        },
+        onloaderror: () => {
+          if (xfade?.howl === nextHowl) cancelCrossfade(false);
+        },
+      }));
+      xfade = { howl: nextHowl, playback, track: next, pending: false };
+      if (corsMode !== 'none' && tapHowl(nextHowl)) markLive(true);
+      nextHowl.play();
+      try {
+        howl?.fade(howl.volume(), 0, Math.max(300, seconds * 1000));
+      } catch {
+        /* old sound already gone */
+      }
+      nextHowl.fade(0, targetVolume, Math.max(300, seconds * 1000));
+    } catch {
+      if (xfade?.track.id === next.id) xfade = null;
+    }
   },
 
   _autoplayNext: async () => {
@@ -785,6 +980,7 @@ const useMusicStore = create((set, get) => ({
   _handleEnded: () => {
     const { repeat, currentTrack, currentTime, duration } = get();
     if (repeat === 'one' && currentTrack) {
+      cancelCrossfade(false);
       if (currentTrack.source === 'youtube') {
         ytPlayer.seek(0);
         ytPlayer.play();
@@ -827,6 +1023,7 @@ const useMusicStore = create((set, get) => ({
       } else if (howl) {
         const seek = howl.seek();
         t = typeof seek === 'number' ? seek : 0;
+        get()._maybeCrossfade(t);
       }
       if (t !== get().currentTime) {
         set({ currentTime: t });
@@ -848,14 +1045,21 @@ const useMusicStore = create((set, get) => ({
   _syncLyricIndex: (t) => {
     const { lyrics, currentTrack, currentLyricIndex } = get();
     if (!lyrics?.synced?.length || !currentTrack) return;
-    const offset = getLyricsOffset(currentTrack.id) + (lyrics.baseOffsetMs || 0);
+    const offset = getLyricsOffset(currentTrack.id) + (lyrics.baseOffsetMs || 0) + getSettings().lyricsOffsetMs;
     const idx = findActiveLine(lyrics.synced, t * 1000 + offset);
     if (idx !== currentLyricIndex) set({ currentLyricIndex: idx });
   },
 
   _persistPrefs: () => {
     const { volume, muted, shuffle, repeat, autoplay, playerMode } = get();
-    saveJson(PREFS_KEY, { volume, muted, shuffle, repeat, autoplay, playerMode });
+    const remember = getSettings().rememberVolume;
+    saveJson(PREFS_KEY, {
+      ...(remember ? { volume, muted } : {}),
+      shuffle,
+      repeat,
+      autoplay,
+      playerMode,
+    });
   },
 
   _persistSession: () => {
@@ -887,24 +1091,27 @@ const useMusicStore = create((set, get) => ({
 
   restoreSession: () => {
     if (get().currentTrack) return;
+    if (!getSettings().resumeSession) return;
     const saved = loadJson(SESSION_KEY, null);
     if (!saved?.currentTrack) return;
+    const resumeAt = getSettings().rememberPosition ? saved.currentTime || 0 : 0;
     set({
       currentTrack: saved.currentTrack,
       playlist: Array.isArray(saved.playlist) ? saved.playlist : [saved.currentTrack],
       currentIndex: typeof saved.currentIndex === 'number' ? saved.currentIndex : 0,
       queue: Array.isArray(saved.queue) ? saved.queue : [],
-      currentTime: saved.currentTime || 0,
+      currentTime: resumeAt,
       duration: saved.currentTrack.duration || 0,
       isPlaying: false,
       status: 'paused',
     });
-    updateMediaMetadata(saved.currentTrack);
+    if (getSettings().mediaSessionEnabled) updateMediaMetadata(saved.currentTrack);
   },
 
   stopAndClear: () => {
     playToken++;
     markLive(false);
+    cancelCrossfade(false);
     cancelAudioWork();
     audioPlayback = null;
     seekAfterLoad = null;

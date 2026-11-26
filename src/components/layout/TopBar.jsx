@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Settings } from 'lucide-react';
 import { useAuthStore } from '../../stores/auth';
 import { initials } from '../../lib/utils';
 import ThemeToggle from './ThemeToggle';
@@ -22,6 +23,14 @@ const TopBar = () => {
       <QuickSearch />
 
       <div className="ml-auto flex items-center gap-1.5">
+        <Link
+          to="/settings"
+          aria-label="Pengaturan"
+          title="Pengaturan"
+          className="kv-press flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] border-kv-line bg-kv-surface text-kv-ink hover:bg-kv-muted"
+        >
+          <Settings size={17} />
+        </Link>
         <ThemeToggle />
         <Link
           to="/profile"

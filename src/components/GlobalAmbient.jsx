@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useMusicStore } from '../stores/music';
+import { useSettingsStore } from '../stores/settings';
 import { useArtColors } from '../hooks/useArtColors';
 
 // Single ambient source for the whole deck: publishes the cover's sampled light
@@ -7,11 +8,12 @@ import { useArtColors } from '../hooks/useArtColors';
 // panel. Without art the vars clear to transparent and the deck stays monochrome.
 export default function GlobalAmbient() {
   const art = useMusicStore((s) => s.currentTrack?.albumArt);
+  const ambient = useSettingsStore((s) => s.ambientArtwork);
   const colors = useArtColors(art);
 
   useEffect(() => {
     const root = document.documentElement;
-    if (colors) {
+    if (colors && ambient) {
       root.style.setProperty('--kv-ambient-a', colors.a);
       root.style.setProperty('--kv-ambient-b', colors.b);
       root.style.setProperty('--kv-ambient-c', colors.c);
@@ -20,7 +22,7 @@ export default function GlobalAmbient() {
       root.style.removeProperty('--kv-ambient-b');
       root.style.removeProperty('--kv-ambient-c');
     }
-  }, [colors]);
+  }, [colors, ambient]);
 
   useEffect(
     () => () => {
@@ -31,6 +33,8 @@ export default function GlobalAmbient() {
     },
     []
   );
+
+  if (!ambient) return null;
 
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">

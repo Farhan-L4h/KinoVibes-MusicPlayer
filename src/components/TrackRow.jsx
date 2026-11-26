@@ -1,8 +1,9 @@
 import { Play, Heart, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useMusicStore } from '../stores/music';
 import { useFavoritesStore } from '../stores/favorites';
 import { useTrackActions } from '../hooks/useTrackActions';
-import { formatTime, cn } from '../lib/utils';
+import { formatTime, cn, normalizeArtist } from '../lib/utils';
 import EqBars from './ui/EqBars';
 import TrackMenu from './TrackMenu';
 import TrackArt from './TrackArt';
@@ -20,6 +21,7 @@ const TrackRow = ({
   isFirst,
   isLast,
 }) => {
+  const navigate = useNavigate();
   const currentTrack = useMusicStore((s) => s.currentTrack);
   const isPlaying = useMusicStore((s) => s.isPlaying);
   const isFavorite = useFavoritesStore((s) => s.isFavorite);
@@ -29,6 +31,12 @@ const TrackRow = ({
     currentTrack?.id === track.id ||
     (!!track.videoId && currentTrack?.videoId === track.videoId);
   const fav = isFavorite(track);
+
+  const goArtist = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (track.artist) navigate(`/artist/${normalizeArtist(track.artist)}`);
+  };
 
   return (
     <div
@@ -55,33 +63,43 @@ const TrackRow = ({
         )}
       </button>
 
-      <button
-        type="button"
-        onClick={() => actions.play(track, list)}
-        className="flex min-w-0 flex-[2] items-center gap-2.5 text-left sm:gap-3"
-      >
-        <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-kv border border-kv-line bg-kv-muted sm:h-12 sm:w-12">
-          <TrackArt src={track.albumArt} videoId={track.videoId} small placeholderSize={18} />
-        </span>
-        <span className="min-w-0">
-          <span className="flex items-center gap-2">
-            <span className="truncate text-sm font-semibold leading-tight text-kv-ink">
-              {track.title}
-            </span>
-            {track.source === 'youtube' && (
-              <span className="shrink-0 rounded border border-kv-line bg-kv-panel px-1 font-mono text-[9px] text-kv-ink">
-                YT
-              </span>
-            )}
-            {track.source === 'spotify' && (
-              <span className="shrink-0 rounded border border-kv-line bg-kv-panel px-1 font-mono text-[9px] text-kv-ink">
-                SP
-              </span>
-            )}
+      <div className="flex min-w-0 flex-[2] items-center gap-2.5 sm:gap-3">
+        <button
+          type="button"
+          onClick={() => actions.play(track, list)}
+          aria-label={`Putar ${track.title}`}
+          className="flex min-w-0 flex-1 items-center gap-2.5 text-left sm:gap-3"
+        >
+          <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-kv border border-kv-line bg-kv-muted sm:h-12 sm:w-12">
+            <TrackArt src={track.albumArt} videoId={track.videoId} small placeholderSize={18} />
           </span>
-          <span className="block truncate text-sm text-kv-ink-muted">{track.artist}</span>
-        </span>
-      </button>
+          <span className="min-w-0">
+            <span className="flex items-center gap-2">
+              <span className="truncate text-sm font-semibold leading-tight text-kv-ink">
+                {track.title}
+              </span>
+              {track.source === 'youtube' && (
+                <span className="shrink-0 rounded border border-kv-line bg-kv-panel px-1 font-mono text-[9px] text-kv-ink">
+                  YT
+                </span>
+              )}
+              {track.source === 'spotify' && (
+                <span className="shrink-0 rounded border border-kv-line bg-kv-panel px-1 font-mono text-[9px] text-kv-ink">
+                  SP
+                </span>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={goArtist}
+              className="block max-w-full truncate text-left text-sm text-kv-ink-muted hover:text-kv-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-kv-ink"
+              aria-label={`Lihat artis ${track.artist}`}
+            >
+              {track.artist}
+            </button>
+          </span>
+        </button>
+      </div>
 
       {showAlbum && (
         <span className="hidden min-w-0 flex-1 truncate text-sm text-kv-ink-muted lg:block">

@@ -3,6 +3,25 @@ const TIME_TAG = /\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
 const WORD_TAG = /<\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?>/g;
 const META_TAG = /^\[(ar|ti|al|by|offset|length):(.*)\]$/i;
 
+// Enhanced LRC puts a timestamp before each word; the text between two stamps
+// belongs to the earlier one. Returns null when a line has no word stamps.
+const parseWordTimings = (line) => {
+  const stamps = [...line.matchAll(new RegExp(WORD_TAG.source, 'g'))];
+  if (stamps.length < 2) return null;
+  const words = [];
+  for (let i = 0; i < stamps.length; i += 1) {
+    const match = stamps[i];
+    const end = i + 1 < stamps.length ? stamps[i + 1].index : line.length;
+    const text = line.slice(match.index + match[0].length, end).replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+    const digits = match[0].match(/<(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?>/);
+    if (!digits) continue;
+    const frac = parseInt((digits[3] || '0').padEnd(3, '0').slice(0, 3), 10);
+    words.push({ text, timeMs: parseInt(digits[1], 10) * 60_000 + parseInt(digits[2], 10) * 1000 + frac });
+  }
+  return words.length > 0 ? words : null;
+};
+
 export const parseLrc = (text) => {
   const lines = [];
   const meta = {};
@@ -25,13 +44,14 @@ export const parseLrc = (text) => {
     const stamps = [...line.matchAll(TIME_TAG)];
     if (stamps.length === 0) continue;
 
-    const content = line.replace(TIME_TAG, '').replace(WORD_TAG, '').trim();
+    const words = parseWordTimings(line);
+    const content = line.replace(TIME_TAG, '').replace(WORD_TAG, '').replace(/\s+/g, ' ').trim();
     for (const stamp of stamps) {
       const min = parseInt(stamp[1], 10);
       const sec = parseInt(stamp[2], 10);
       const fracRaw = stamp[3] || '0';
       const frac = parseInt(fracRaw.padEnd(3, '0').slice(0, 3), 10);
-      lines.push({ timeMs: min * 60_000 + sec * 1000 + frac, text: content || '♪' });
+      lines.push({ timeMs: min * 60_000 + sec * 1000 + frac, text: content || '♪', words });
     }
   }
 

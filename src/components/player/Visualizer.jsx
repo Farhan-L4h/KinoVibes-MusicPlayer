@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useMusicStore } from '../../stores/music';
-import { readTime } from '../../player/analyser';
+import { readFreq, readTime } from '../../player/analyser';
+import { useSettingsStore } from '../../stores/settings';
 
 // Oscilloscope: real time-domain audio when the graph is live (uploads and
 // Spotify previews), stylized ripple for YouTube/Spotify SDK whose audio can't
@@ -11,6 +12,8 @@ export default function Visualizer({ className = '' }) {
   const kickRef = useRef(null);
   const isPlaying = useMusicStore((s) => s.isPlaying);
   const hasTrack = useMusicStore((s) => !!s.currentTrack);
+  const enabled = useSettingsStore((s) => s.visualizerEnabled);
+  const style = useSettingsStore((s) => s.visualizerStyle);
 
   useEffect(() => {
     playingRef.current = isPlaying && hasTrack;
@@ -18,6 +21,7 @@ export default function Visualizer({ className = '' }) {
   }, [isPlaying, hasTrack]);
 
   useEffect(() => {
+    if (!enabled) return undefined;
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
     const ctx = canvas.getContext('2d');
@@ -77,6 +81,32 @@ export default function Visualizer({ className = '' }) {
       ctx.moveTo(0, mid);
       ctx.lineTo(w, mid);
       ctx.stroke();
+
+      if (style === 'bars') {
+        const freq = readFreq();
+        const count = Math.max(14, Math.min(56, Math.floor(w / 7)));
+        const gap = w / count;
+        const barW = Math.max(2, gap * 0.55);
+        ctx.fillStyle = grad;
+        for (let i = 0; i < count; i += 1) {
+          const ratio = freq
+            ? freq[Math.min(freq.length - 1, Math.floor((i / count) * freq.length * 0.72))] / 255
+            : 0.25 + 0.22 * Math.sin(time * 2.2 + i * 0.55) + 0.12 * Math.sin(time * 3.7 + i * 0.2);
+          const level = Math.max(0.04, Math.min(1, ratio)) * energy;
+          const bh = level * h * 0.82;
+          const x = i * gap + (gap - barW) / 2;
+          ctx.globalAlpha = 0.9;
+          if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(x, mid - bh / 2, barW, bh, barW / 2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(x, mid - bh / 2, barW, bh);
+          }
+        }
+        ctx.globalAlpha = 1;
+        return;
+      }
 
       const pts = [];
       const wave = readTime();
@@ -177,7 +207,9 @@ export default function Visualizer({ className = '' }) {
       kickRef.current = null;
       ro.disconnect();
     };
-  }, []);
+  }, [enabled, style]);
+
+  if (!enabled) return null;
 
   return (
     <canvas

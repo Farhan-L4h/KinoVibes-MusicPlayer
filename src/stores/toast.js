@@ -35,7 +35,7 @@ export const useToastStore = create((set, get) => ({
 }));
 
 export const toast = {
-  success: (msg) => useToastStore.getState().push(msg, 'green'),
-  error: (msg) => useToastStore.getState().push(msg, 'red', 5000),
-  info: (msg) => useToastStore.getState().push(msg, 'blue'),
+  success: (msg, timeout) => useToastStore.getState().push(msg, 'green', timeout),
+  error: (msg, timeout) => useToastStore.getState().push(msg, 'red', timeout ?? 5000),
+  info: (msg, timeout) => useToastStore.getState().push(msg, 'blue', timeout),
 };

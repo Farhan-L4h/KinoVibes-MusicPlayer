@@ -19,6 +19,8 @@ const Upload = lazy(() => import('./pages/Upload'));
 const Admin = lazy(() => import('./pages/Admin'));
 const Profile = lazy(() => import('./pages/Profile'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const Artist = lazy(() => import('./pages/Artist'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 const App = () => {
   useEffect(() => {
@@ -50,6 +52,8 @@ const App = () => {
           <Route path="/upload" element={<Upload />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/artist/:slug" element={<Artist />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

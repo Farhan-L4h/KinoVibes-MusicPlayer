@@ -32,6 +32,26 @@ export const cleanTitle = (title) =>
     .replace(/\s*feat\.?\s+/gi, ' ft. ')
     .trim();
 
+// URL-safe artist key that keeps the real name recoverable with decodeURIComponent.
+export const normalizeArtist = (name) => encodeURIComponent((name || '').trim());
+
+// Loose provider-agnostic artist comparison: ignores case, punctuation,
+// whitespace and the "- Topic" auto-generated channel suffix.
+export const artistKey = (name) =>
+  (name || '')
+    .toLowerCase()
+    .replace(/\s*-\s*topic$/, '')
+    .replace(/vevo$/, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+export const sameArtist = (a, b) => {
+  const ka = artistKey(a);
+  const kb = artistKey(b);
+  if (!ka || !kb) return false;
+  return ka === kb || ka.includes(kb) || kb.includes(ka);
+};
+
 export const debounce = (fn, ms = 300) => {
   let t;
   const wrapped = (...args) => {

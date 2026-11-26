@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search as SearchIcon, Youtube, Library, Loader2, X, Clock3, Music2, Disc3, UserRound, ListPlus, AudioLines } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
 import { useMusicStore } from '../stores/music';
@@ -14,7 +14,7 @@ import EmptyState from '../components/ui/EmptyState';
 import Button from '../components/ui/Button';
 import ImportPlaylistModal from '../components/ImportPlaylistModal';
 import { TrackRowSkeleton, CardSkeleton } from '../components/ui/Skeleton';
-import { debounce } from '../lib/utils';
+import { debounce, normalizeArtist } from '../lib/utils';
 
 const HISTORY_KEY = 'kv-searches';
 const EXPLORE = ['Pop Indonesia terbaru', 'Lo-fi beats', 'K-Pop hit', 'Indie lokal', 'Jazz santai', 'Rock klasik'];
@@ -78,12 +78,14 @@ const BrowseCard = ({ item, onClick }) => (
 );
 
 const Search = () => {
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
 
   const initialQ = params.get('q') || '';
   const [input, setInput] = useState(initialQ);
   const [query, setQuery] = useState(initialQ);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQ);
   const [src, setSrc] = useState(['library', 'spotify'].includes(params.get('src')) ? params.get('src') : 'yt');
   const [type, setType] = useState(TYPE_TABS.some((t) => t.value === params.get('type')) ? params.get('type') : 'song');
   const [items, setItems] = useState([]);
@@ -117,14 +119,25 @@ const Search = () => {
     inputRef.current?.blur();
   };
 
+  // 300 ms debounce on the typed query; changing source/type searches at once.
   useEffect(() => {
-    const trimmed = query.trim();
+    if (!query.trim()) {
+      setDebouncedQuery('');
+      return undefined;
+    }
+    const timer = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    const trimmed = debouncedQuery.trim();
     if (!trimmed) {
       setState('idle');
       setItems([]);
       return undefined;
     }
     let cancelled = false;
+    const controller = new AbortController();
     setState('loading');
     setError('');
     (async () => {
@@ -140,7 +153,7 @@ const Search = () => {
           setItems(rows);
           setState(rows.length ? 'ready' : 'empty');
         } else {
-          const raw = await searchYouTube(trimmed, type, 24);
+          const raw = await searchYouTube(trimmed, type, 24, { signal: controller.signal });
           if (cancelled) return;
           setItems(raw);
           setState(raw.length ? 'ready' : 'empty');
@@ -155,8 +168,9 @@ const Search = () => {
     })();
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [query, src, type, user?.id, retry]);
+  }, [debouncedQuery, src, type, user?.id, retry]);
 
   const fetchSuggestions = useMemo(
     () =>
@@ -440,7 +454,11 @@ const Search = () => {
               <BrowseCard
                 key={`${item.browseId || item.title}-${i}`}
                 item={item}
-                onClick={() => runSearch(type === 'artist' ? item.title : `${item.title} ${item.artist || ''}`.trim(), 'yt', 'song')}
+                onClick={() =>
+                  type === 'artist'
+                    ? navigate(`/artist/${normalizeArtist(item.title)}`)
+                    : runSearch(`${item.title} ${item.artist || ''}`.trim(), 'yt', 'song')
+                }
               />
             ))}
           </div>
